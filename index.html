@@ -33,16 +33,13 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 .nav-btn.active .nav-icon{transform:scale(1.15);}
 
 /* PAGE TRANSITIONS */
-#pages-container{position:relative;overflow:hidden;}
-.page{display:none;padding:0 0 90px;min-height:100vh;opacity:0;transform:translateY(12px);transition:opacity 0.35s var(--ease-out),transform 0.35s var(--ease-out);}
-.page.active{display:block;}
-.page.visible{opacity:1;transform:translateY(0);}
-
-/* PAGE SLIDE (pour tabs) */
-.page.slide-in-right{animation:slideInRight 0.38s var(--ease-out) forwards;}
-.page.slide-in-left{animation:slideInLeft 0.38s var(--ease-out) forwards;}
-@keyframes slideInRight{from{opacity:0;transform:translateX(32px)}to{opacity:1;transform:translateX(0)}}
-@keyframes slideInLeft{from{opacity:0;transform:translateX(-32px)}to{opacity:1;transform:translateX(0)}}
+.page{display:none;padding:0 0 90px;min-height:100vh;}
+.page.active{display:block;animation:pageIn 0.35s var(--ease-out) both;}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.page.slide-in-right{animation:slideInRight 0.35s var(--ease-out) forwards;}
+.page.slide-in-left{animation:slideInLeft 0.35s var(--ease-out) forwards;}
+@keyframes slideInRight{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideInLeft{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:translateX(0)}}
 .header{padding:60px 20px 20px;background:linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);}
 .badge{display:inline-block;background:var(--accent);color:#0a0a0a;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin-bottom:12px;}
 .page-title{font-size:28px;font-weight:800;line-height:1.1;}
@@ -56,12 +53,13 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 /* WEEK SELECTOR */
 .week-pills{display:flex;gap:8px;padding:0 16px;margin-bottom:4px;overflow-x:auto;scrollbar-width:none;}
 .week-pills::-webkit-scrollbar{display:none;}
-.pill{flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;transition:all 0.2s;}
+.pill{flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;transition:all 0.25s var(--spring);}
 .pill.active{background:var(--accent);border-color:var(--accent);color:#0a0a0a;}
+.pill:active{transform:scale(0.93);}
 
 /* SESSION CARDS */
-.session-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin:0 16px 10px;cursor:pointer;transition:border-color 0.2s;display:flex;align-items:center;gap:14px;}
-.session-card:active{border-color:var(--accent);}
+.session-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin:0 16px 10px;cursor:pointer;transition:border-color 0.2s,transform 0.15s var(--spring);display:flex;align-items:center;gap:14px;}
+.session-card:active{border-color:var(--accent);transform:scale(0.97);}
 .session-num{width:44px;height:44px;border-radius:10px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--accent);flex-shrink:0;}
 .session-info{flex:1;}
 .session-name{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;}
@@ -70,7 +68,8 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 .session-done{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 
 /* WORKOUT VIEW */
-#workout-view{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto;padding-bottom:100px;}
+#workout-view{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto;padding-bottom:100px;transform:translateX(100%);transition:transform 0.42s var(--ease-out);}
+#workout-view.open{transform:translateX(0);}
 .workout-header{background:var(--bg2);padding:60px 20px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;}
 .back-btn{display:flex;align-items:center;gap:6px;color:var(--accent);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer;padding:0;margin-bottom:12px;}
 .workout-title{font-size:22px;font-weight:800;}
@@ -95,14 +94,33 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 .weight-input{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;padding:8px 10px;width:100%;text-align:center;-webkit-appearance:none;}
 .weight-input:focus{outline:none;border-color:var(--accent);}
 .weight-input.filled{border-color:#40d0a060;background:#40d0a010;}
-.done-btn{width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;flex-shrink:0;}
-.done-btn.active{background:var(--accent);border-color:var(--accent);}
+.done-btn{width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.25s var(--spring);flex-shrink:0;}
+.done-btn:active{transform:scale(0.85);}
+.done-btn.active{background:var(--accent);border-color:var(--accent);transform:scale(1.08);}
 .done-check{width:16px;height:16px;}
 
 /* REST SECTION */
 .rest-section{background:var(--bg3);padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .rest-label{font-size:11px;color:var(--text3);font-family:'Syne',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;}
-.rest-timer-btn{font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--accent);color:var(--accent);background:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;}
+.rest-timer-btn{font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--accent);color:var(--accent);background:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;transition:all 0.2s var(--spring);}
+.rest-timer-btn:active{transform:scale(0.92);background:var(--accent);color:#0a0a0a;}
+
+/* STAGGERED ENTRANCE */
+@keyframes cardIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.session-card{animation:cardIn 0.4s var(--ease-out) both;}
+.session-card:nth-child(1){animation-delay:0.04s;}
+.session-card:nth-child(2){animation-delay:0.09s;}
+.session-card:nth-child(3){animation-delay:0.14s;}
+.session-card:nth-child(4){animation-delay:0.19s;}
+
+/* EX BLOCK ENTRANCE */
+.ex-block{margin:0 16px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;animation:cardIn 0.38s var(--ease-out) both;}
+.ex-block:nth-child(1){animation-delay:0.05s;}
+.ex-block:nth-child(2){animation-delay:0.1s;}
+.ex-block:nth-child(3){animation-delay:0.15s;}
+.ex-block:nth-child(4){animation-delay:0.2s;}
+.ex-block:nth-child(5){animation-delay:0.25s;}
+.ex-block:nth-child(6){animation-delay:0.3s;}
 
 /* CARDIO BLOCK */
 .cardio-block{margin:0 16px 16px;background:#40d0a010;border:1px solid #40d0a040;border-radius:var(--radius);padding:16px;}
@@ -695,6 +713,11 @@ function openWorkout(blockIdx, sessionIdx, week){
   }
 
   document.getElementById('workout-view').style.display='block';
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      document.getElementById('workout-view').classList.add('open');
+    });
+  });
   document.getElementById('finish-bar').classList.add('show');
   document.body.style.overflow='hidden';
 }
@@ -731,9 +754,11 @@ function toggleDone(btn, blockIdx, sessionIdx, week){
 }
 
 function closeWorkout(){
-  document.getElementById('workout-view').style.display='none';
+  const wv=document.getElementById('workout-view');
+  wv.classList.remove('open');
   document.getElementById('finish-bar').classList.remove('show');
   document.body.style.overflow='';
+  setTimeout(()=>{wv.style.display='none';},420);
   state.currentWorkout=null;
   renderSessions();
 }
@@ -972,11 +997,17 @@ function renderEmptyChart(exName){
 }
 
 // --- NAV ---
+const PAGE_ORDER=['home','history','progress'];
+let currentPageIdx=0;
 function showPage(name, btn){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const newIdx=PAGE_ORDER.indexOf(name);
+  const direction=newIdx>currentPageIdx?'slide-in-right':'slide-in-left';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active','slide-in-right','slide-in-left'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
+  const page=document.getElementById('page-'+name);
+  page.classList.add('active',direction);
   btn.classList.add('active');
+  currentPageIdx=newIdx;
   if(name==='history') renderHistory();
   if(name==='progress') renderProgressPage();
 }
