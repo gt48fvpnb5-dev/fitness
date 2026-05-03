@@ -740,6 +740,17 @@ function saveWeight(input){
   save();
 }
 
+const SHEETS_URL='https://script.google.com/macros/s/AKfycbyAnRKartabOvH0mHADFyoNdWgQazp8U6lK9zrnBo8-wC6FB4yXrdpSjUACB5OdIs1G/exec';
+
+function syncToSheets(data){
+  fetch(SHEETS_URL,{
+    method:'POST',
+    mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(data)
+  }).catch(e=>console.log('Sync error:',e));
+}
+
 function toggleDone(btn, blockIdx, sessionIdx, week){
   const {ex,done}=btn.dataset;
   const key=`workout_b${blockIdx}w${week}_s${sessionIdx}`;
@@ -752,6 +763,31 @@ function toggleDone(btn, blockIdx, sessionIdx, week){
   const path=btn.querySelector('path');
   if(path) path.setAttribute('stroke',!current?'#0a0a0a':'currentColor');
   save();
+
+  // Sync to Google Sheets when serie is checked
+  if(!current){
+    const bloc=PROGRAM[blockIdx];
+    const s=bloc.sessions[sessionIdx];
+    const serieIdx=parseInt(done.replace('s',''));
+    const weight=state[key][ex]?state[key][ex][done]||'':'' ;
+    // Find exercise name
+    let exName='';
+    s.groups.forEach((g,gi)=>{
+      g.exercises.forEach((e,ei)=>{
+        if(`g${gi}_e${ei}`===ex) exName=e.name;
+      });
+    });
+    syncToSheets({
+      date:new Date().toISOString(),
+      bloc:bloc.label,
+      semaine:week,
+      seance:`S${s.num} ${s.name}`,
+      exercice:exName,
+      serie:serieIdx+1,
+      poids:weight||'',
+      fait:1
+    });
+  }
 }
 
 function closeWorkout(){
