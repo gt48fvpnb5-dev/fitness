@@ -186,6 +186,12 @@ canvas{width:100%!important;max-height:200px;}
 #confirm-modal .confirm-box{transform:translateY(110%);transition:transform 0.4s var(--spring);}
 #confirm-modal.show .confirm-box{transform:translateY(0);}
 .confirm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:24px;padding:24px;width:calc(100% - 40px);max-width:400px;}
+
+/* REOPEN MODAL */
+#reopen-modal{display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 20px);opacity:0;transition:opacity 0.3s;}
+#reopen-modal.show{display:flex;opacity:1;}
+#reopen-modal .delete-box{transform:translateY(110%);transition:transform 0.4s var(--spring);}
+#reopen-modal.show .delete-box{transform:translateY(0);}
 .confirm-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:8px;}
 .confirm-sub{font-size:13px;color:var(--text2);margin-bottom:20px;}
 .confirm-btns{display:flex;gap:10px;}
@@ -247,8 +253,8 @@ canvas{width:100%!important;max-height:200px;}
 </div>
 
 <!-- REOPEN CONFIRM MODAL -->
-<div id="reopen-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 20px);">
-  <div class="delete-box" id="reopen-box" style="transform:translateY(100%);transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);">
+<div id="reopen-modal">
+  <div class="delete-box">
     <div class="delete-title">Rouvrir la séance ?</div>
     <div class="delete-sub">Elle sera retirée de l'historique et tu pourras la modifier.</div>
     <div class="delete-btns">
@@ -1036,17 +1042,14 @@ let pendingReopenIdx=null;
 function reopenWorkout(idx){
   pendingReopenIdx=idx;
   const modal=document.getElementById('reopen-modal');
-  const box=document.getElementById('reopen-box');
   modal.style.display='flex';
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{box.style.transform='translateY(0)';}));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>modal.classList.add('show')));
 }
 
 function closeReopenModal(){
   const modal=document.getElementById('reopen-modal');
-  const box=document.getElementById('reopen-box');
-  box.style.transform='translateY(100%)';
-  setTimeout(()=>{modal.style.display='none';},400);
-  pendingReopenIdx=null;
+  modal.classList.remove('show');
+  setTimeout(()=>{modal.style.display='none';pendingReopenIdx=null;},400);
 }
 
 function executeReopen(){
