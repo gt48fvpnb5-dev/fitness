@@ -866,11 +866,14 @@ function closeWorkout(){
 
 function finishWorkout(){
   const modal=document.getElementById('confirm-modal');
-  modal.classList.add('show');
+  modal.style.display='flex';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>modal.classList.add('show')));
 }
 
 function closeConfirm(){
-  document.getElementById('confirm-modal').classList.remove('show');
+  const modal=document.getElementById('confirm-modal');
+  modal.classList.remove('show');
+  setTimeout(()=>{modal.style.display='none';},400);
 }
 
 function confirmFinish(){
@@ -1004,12 +1007,15 @@ let pendingDeleteIdx=null;
 
 function confirmDelete(idx){
   pendingDeleteIdx=idx;
-  document.getElementById('delete-modal').classList.add('show');
+  const modal=document.getElementById('delete-modal');
+  modal.style.display='flex';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>modal.classList.add('show')));
 }
 
 function closeDeleteModal(){
-  document.getElementById('delete-modal').classList.remove('show');
-  pendingDeleteIdx=null;
+  const modal=document.getElementById('delete-modal');
+  modal.classList.remove('show');
+  setTimeout(()=>{modal.style.display='none';pendingDeleteIdx=null;},400);
 }
 
 function executeDelete(){
