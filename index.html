@@ -159,7 +159,7 @@ canvas{width:100%!important;max-height:200px;}
 .stat-lbl{font-size:11px;color:var(--text2);margin-top:4px;}
 
 /* FINISH BAR */
-.finish-bar{position:fixed;bottom:70px;left:16px;right:16px;background:var(--accent);border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;z-index:150;display:none;}
+.finish-bar{position:fixed;bottom:calc(70px + env(safe-area-inset-bottom) + 28px);left:16px;right:16px;background:var(--accent);border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;z-index:300;display:none;}
 .finish-bar.show{display:flex;}
 .finish-text{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#0a0a0a;}
 .finish-btn{background:#0a0a0a;color:var(--accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;}
