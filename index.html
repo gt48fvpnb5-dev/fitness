@@ -71,7 +71,7 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 /* WORKOUT VIEW */
 #workout-view{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto;padding-bottom:100px;transform:translateX(100%);transition:transform 0.42s var(--ease-out);}
 #workout-view.open{transform:translateX(0);}
-.workout-header{background:var(--bg2);padding:60px 20px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;}
+.workout-header{background:var(--bg2);padding:20px 20px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;}
 .back-btn{display:flex;align-items:center;gap:6px;color:var(--accent);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer;padding:0;margin-bottom:12px;}
 .workout-title{font-size:22px;font-weight:800;}
 .workout-sub{font-size:13px;color:var(--text2);margin-top:4px;}
@@ -159,10 +159,20 @@ canvas{width:100%!important;max-height:200px;}
 .stat-lbl{font-size:11px;color:var(--text2);margin-top:4px;}
 
 /* FINISH BAR */
-.finish-bar{position:fixed;bottom:calc(70px + env(safe-area-inset-bottom) + 28px);left:16px;right:16px;background:var(--accent);border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;z-index:300;display:none;}
+.finish-bar{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 16px);left:16px;right:16px;background:var(--accent);border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;z-index:300;display:none;}
 .finish-bar.show{display:flex;}
 .finish-text{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#0a0a0a;}
 .finish-btn{background:#0a0a0a;color:var(--accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;}
+
+/* CONFIRM MODAL */
+#confirm-modal{display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 16px);}
+#confirm-modal.show{display:flex;}
+.confirm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:24px;width:calc(100% - 32px);max-width:400px;}
+.confirm-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:8px;}
+.confirm-sub{font-size:13px;color:var(--text2);margin-bottom:20px;}
+.confirm-btns{display:flex;gap:10px;}
+.confirm-yes{flex:1;padding:14px;border-radius:12px;background:var(--accent);border:none;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#0a0a0a;cursor:pointer;}
+.confirm-no{flex:1;padding:14px;border-radius:12px;background:var(--bg3);border:1px solid var(--border2);font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text2);cursor:pointer;}
 
 /* RPE */
 .rpe-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
@@ -203,6 +213,18 @@ canvas{width:100%!important;max-height:200px;}
   <div style="padding:0 16px 20px;">
     <div class="section-label" style="padding:0;margin-bottom:12px;">Difficulté ressentie (RPE)</div>
     <div class="rpe-row" id="rpe-row"></div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirm-modal">
+  <div class="confirm-box">
+    <div class="confirm-title">Terminer la séance ?</div>
+    <div class="confirm-sub">Tu ne pourras pas modifier les données après.</div>
+    <div class="confirm-btns">
+      <button class="confirm-no" onclick="closeConfirm()">Annuler</button>
+      <button class="confirm-yes" onclick="confirmFinish()">Terminer ✓</button>
+    </div>
   </div>
 </div>
 
@@ -801,12 +823,19 @@ function closeWorkout(){
 }
 
 function finishWorkout(){
+  document.getElementById('confirm-modal').classList.add('show');
+}
+
+function closeConfirm(){
+  document.getElementById('confirm-modal').classList.remove('show');
+}
+
+function confirmFinish(){
+  closeConfirm();
   const cw=state.currentWorkout;
   if(!cw)return;
   const doneKey=`done_b${cw.blockIdx}w${cw.week}_s${cw.sessionIdx}`;
   state[doneKey]=true;
-
-  // Log to history
   const bloc=PROGRAM[cw.blockIdx];
   const s=bloc.sessions[cw.sessionIdx];
   const entry={
@@ -854,7 +883,7 @@ function renderHistory(){
     container.innerHTML='<div class="empty-state"><div class="empty-icon">🏋️</div><div class="empty-text">Aucune séance terminée</div></div>';
     return;
   }
-  state.history.forEach(entry=>{
+  state.history.forEach((entry,idx)=>{
     const d=new Date(entry.date);
     const dateStr=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
     const timeStr=d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
@@ -868,9 +897,23 @@ function renderHistory(){
         <div class="hist-stat">Volume: <span>${vol>0?vol+'kg':'—'}</span></div>
         <div class="hist-stat">Semaine: <span>${entry.week}</span></div>
       </div>
+      <button onclick="reopenWorkout(${idx})" style="margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Rouvrir la séance</button>
     `;
     container.appendChild(card);
   });
+}
+
+function reopenWorkout(idx){
+  const entry=state.history[idx];
+  if(!entry)return;
+  const doneKey=`done_b${entry.blockIdx}w${entry.week}_s${entry.sessionIdx}`;
+  delete state[doneKey];
+  save();
+  showPage('home', document.querySelectorAll('.nav-btn')[0]);
+  state.block=entry.blockIdx;
+  state.weekInBlock=entry.week;
+  initHome();
+  setTimeout(()=>openWorkout(entry.blockIdx, entry.sessionIdx, entry.week), 400);
 }
 
 function calcVolume(entry){
