@@ -141,8 +141,8 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 /* SWIPE DELETE */
 .hist-wrap{position:relative;margin:0 16px 10px;border-radius:var(--radius);overflow:visible;}
 .hist-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;position:relative;transition:transform 0.3s var(--ease-out);touch-action:pan-y;z-index:1;}
-.hist-delete-circle{position:absolute;right:-56px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:right 0.3s var(--ease-out);z-index:2;pointer-events:none;}
-.hist-delete-circle.visible{right:-52px;pointer-events:all;}
+.hist-delete-circle{position:absolute;right:-60px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:2;pointer-events:none;}
+.hist-delete-circle.visible{opacity:1;pointer-events:all;}
 .hist-delete-circle svg{width:18px;height:18px;}
 .hist-date{font-family:'Syne',sans-serif;font-size:11px;color:var(--text3);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;}
 .hist-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin:4px 0;}
@@ -154,9 +154,9 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 .empty-text{font-family:'Syne',sans-serif;font-size:14px;}
 
 /* DELETE CONFIRM MODAL */
-#delete-modal{display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 16px);}
+#delete-modal{display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 20px);}
 #delete-modal.show{display:flex;}
-.delete-box{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:24px;width:calc(100% - 32px);max-width:400px;}
+.delete-box{background:var(--bg2);border:1px solid var(--border2);border-radius:24px;padding:24px;width:calc(100% - 40px);max-width:400px;}
 .delete-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:8px;}
 .delete-sub{font-size:13px;color:var(--text2);margin-bottom:20px;}
 .delete-btns{display:flex;gap:10px;}
@@ -179,9 +179,9 @@ canvas{width:100%!important;max-height:200px;}
 .finish-btn{background:#0a0a0a;color:var(--accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;}
 
 /* CONFIRM MODAL */
-#confirm-modal{display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 16px);}
+#confirm-modal{display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 20px);}
 #confirm-modal.show{display:flex;}
-.confirm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:24px;width:calc(100% - 32px);max-width:400px;}
+.confirm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:24px;padding:24px;width:calc(100% - 40px);max-width:400px;}
 .confirm-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:8px;}
 .confirm-sub{font-size:13px;color:var(--text2);margin-bottom:20px;}
 .confirm-btns{display:flex;gap:10px;}
@@ -965,10 +965,13 @@ function renderHistory(){
         card.style.transform='translateX(-70px)';
         deleteCircle.classList.add('visible');
         activeSwipe=card;
-      } else {
-        card.style.transform='translateX(0)';
-        deleteCircle.classList.remove('visible');
-        if(activeSwipe===card) activeSwipe=null;
+      } else if(currentX>10 && activeSwipe===card){
+        // Swipe right to close — delay to allow click on circle
+        setTimeout(()=>{
+          card.style.transform='translateX(0)';
+          deleteCircle.classList.remove('visible');
+          activeSwipe=null;
+        },150);
       }
     });
 
@@ -979,11 +982,15 @@ function renderHistory(){
 
   // Close swipe when tapping elsewhere
   document.addEventListener('touchstart',function(e){
-    if(activeSwipe && !activeSwipe.contains(e.target)){
-      activeSwipe.style.transform='translateX(0)';
-      const circle=activeSwipe.parentElement.querySelector('.hist-delete-circle');
-      if(circle) circle.classList.remove('visible');
-      activeSwipe=null;
+    if(activeSwipe && !activeSwipe.contains(e.target) && !activeSwipe.parentElement.querySelector('.hist-delete-circle').contains(e.target)){
+      setTimeout(()=>{
+        if(activeSwipe){
+          activeSwipe.style.transform='translateX(0)';
+          const circle=activeSwipe.parentElement.querySelector('.hist-delete-circle');
+          if(circle) circle.classList.remove('visible');
+          activeSwipe=null;
+        }
+      },150);
     }
   },{passive:true});
 }
