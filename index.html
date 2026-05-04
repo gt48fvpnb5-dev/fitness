@@ -139,12 +139,11 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 .timer-close{margin-top:12px;padding:10px 28px;border-radius:20px;border:1px solid var(--border2);background:none;color:var(--text2);font-family:'Syne',sans-serif;font-size:13px;cursor:pointer;}
 
 /* SWIPE DELETE */
-.hist-wrap{position:relative;margin:0 16px 10px;}
-.hist-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;position:relative;transition:transform 0.3s var(--ease-out);touch-action:pan-y;}
-.hist-delete-bg{position:absolute;top:0;right:0;bottom:0;width:80px;background:transparent;display:flex;align-items:center;justify-content:center;border-radius:0 var(--radius) var(--radius) 0;}
-.hist-delete-circle{width:44px;height:44px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity 0.2s;pointer-events:none;flex-shrink:0;}
+.hist-wrap{margin:0 16px 10px;}
+.hist-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;position:relative;transition:transform 0.3s var(--ease-out);touch-action:pan-y;overflow:visible;}
+.hist-delete-circle{position:absolute;right:-68px;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;pointer-events:none;}
 .hist-delete-circle.visible{opacity:1;pointer-events:all;}
-.hist-delete-circle svg{width:18px;height:18px;}
+.hist-delete-circle svg{width:20px;height:20px;}
 .hist-date{font-family:'Syne',sans-serif;font-size:11px;color:var(--text3);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;}
 .hist-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin:4px 0;}
 .hist-stats{display:flex;gap:16px;margin-top:8px;}
@@ -939,12 +938,8 @@ function renderHistory(){
 
     const deleteCircle=document.createElement('div');
     deleteCircle.className='hist-delete-circle';
-    deleteCircle.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
-    deleteCircle.onclick=(function(i){return function(e){e.stopPropagation();confirmDelete(i);};})(idx);
-
-    const deleteBg=document.createElement('div');
-    deleteBg.className='hist-delete-bg';
-    deleteBg.appendChild(deleteCircle);
+    deleteCircle.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+    deleteCircle.addEventListener('touchend',(function(i){return function(e){e.stopPropagation();e.preventDefault();confirmDelete(i);};})(idx));
 
     const card=document.createElement('div');
     card.className='hist-card';
@@ -958,16 +953,18 @@ function renderHistory(){
       <button onclick="reopenWorkout(${idx})" style="margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Rouvrir la séance</button>
     `;
 
+    card.appendChild(deleteCircle);
+
     let startX=0, currentX=0;
     card.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;currentX=0;},{passive:true});
     card.addEventListener('touchmove',e=>{
       currentX=e.touches[0].clientX-startX;
-      if(currentX<0) card.style.transform=`translateX(${Math.max(currentX,-70)}px)`;
-      else if(activeSwipe===card) card.style.transform='translateX(-70px)';
+      if(currentX<0) card.style.transform=`translateX(${Math.max(currentX,-90)}px)`;
+      else if(activeSwipe===card) card.style.transform='translateX(-90px)';
     },{passive:true});
     card.addEventListener('touchend',()=>{
       if(currentX<-40){
-        card.style.transform='translateX(-70px)';
+        card.style.transform='translateX(-90px)';
         deleteCircle.classList.add('visible');
         activeSwipe=card;
       } else if(currentX>10 && activeSwipe===card){
@@ -979,7 +976,6 @@ function renderHistory(){
       }
     });
 
-    wrap.appendChild(deleteBg);
     wrap.appendChild(card);
     container.appendChild(wrap);
   });
@@ -990,7 +986,7 @@ function renderHistory(){
       setTimeout(()=>{
         if(activeSwipe){
           activeSwipe.style.transform='translateX(0)';
-          const circle=activeSwipe.previousElementSibling?.querySelector('.hist-delete-circle');
+          const circle=activeSwipe.querySelector('.hist-delete-circle');
           if(circle) circle.classList.remove('visible');
           activeSwipe=null;
         }
