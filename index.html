@@ -138,8 +138,11 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 .timer-bar{height:100%;background:var(--accent);border-radius:2px;transition:width 1s linear;}
 .timer-close{margin-top:12px;padding:10px 28px;border-radius:20px;border:1px solid var(--border2);background:none;color:var(--text2);font-family:'Syne',sans-serif;font-size:13px;cursor:pointer;}
 
-/* HISTORY PAGE */
-.hist-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin:0 16px 10px;cursor:pointer;}
+/* SWIPE DELETE */
+.hist-wrap{position:relative;overflow:hidden;margin:0 16px 10px;border-radius:var(--radius);}
+.hist-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;position:relative;transition:transform 0.3s var(--ease-out);touch-action:pan-y;}
+.hist-delete-btn{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;border-radius:0 var(--radius) var(--radius) 0;cursor:pointer;}
+.hist-delete-btn svg{width:22px;height:22px;}
 .hist-date{font-family:'Syne',sans-serif;font-size:11px;color:var(--text3);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;}
 .hist-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin:4px 0;}
 .hist-stats{display:flex;gap:16px;margin-top:8px;}
@@ -220,7 +223,7 @@ canvas{width:100%!important;max-height:200px;}
 <div id="confirm-modal">
   <div class="confirm-box">
     <div class="confirm-title">Terminer la séance ?</div>
-    <div class="confirm-sub">Tu ne pourras pas modifier les données après.</div>
+    <div class="confirm-sub">Tu pourras toujours rouvrir la séance depuis l'historique.</div>
     <div class="confirm-btns">
       <button class="confirm-no" onclick="closeConfirm()">Annuler</button>
       <button class="confirm-yes" onclick="confirmFinish()">Terminer ✓</button>
@@ -847,7 +850,10 @@ function confirmFinish(){
     storageKey:cw.storageKey,
   };
   if(!state.history) state.history=[];
-  state.history.unshift(entry);
+  // Replace existing entry if same session, otherwise add
+  const existingIdx=state.history.findIndex(h=>h.blockIdx===cw.blockIdx&&h.sessionIdx===cw.sessionIdx&&h.week===cw.week);
+  if(existingIdx>=0) state.history[existingIdx]=entry;
+  else state.history.unshift(entry);
   save();
   closeWorkout();
 }
@@ -888,6 +894,15 @@ function renderHistory(){
     const dateStr=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
     const timeStr=d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
     const vol=calcVolume(entry);
+
+    const wrap=document.createElement('div');
+    wrap.className='hist-wrap';
+
+    const deleteBtn=document.createElement('div');
+    deleteBtn.className='hist-delete-btn';
+    deleteBtn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+    deleteBtn.onclick=()=>confirmDelete(idx);
+
     const card=document.createElement('div');
     card.className='hist-card';
     card.innerHTML=`
@@ -899,8 +914,32 @@ function renderHistory(){
       </div>
       <button onclick="reopenWorkout(${idx})" style="margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Rouvrir la séance</button>
     `;
-    container.appendChild(card);
+
+    // Swipe logic
+    let startX=0, currentX=0, swiped=false;
+    card.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;swiped=false;},{passive:true});
+    card.addEventListener('touchmove',e=>{
+      currentX=e.touches[0].clientX-startX;
+      if(currentX<0) card.style.transform=`translateX(${Math.max(currentX,-80)}px)`;
+      else if(swiped) card.style.transform='translateX(-80px)';
+      else card.style.transform='translateX(0)';
+    },{passive:true});
+    card.addEventListener('touchend',()=>{
+      if(currentX<-40){card.style.transform='translateX(-80px)';swiped=true;}
+      else{card.style.transform='translateX(0)';swiped=false;}
+    });
+
+    wrap.appendChild(deleteBtn);
+    wrap.appendChild(card);
+    container.appendChild(wrap);
   });
+}
+
+function confirmDelete(idx){
+  if(!confirm('Supprimer cette séance de l\'historique ?')) return;
+  state.history.splice(idx,1);
+  save();
+  renderHistory();
 }
 
 function reopenWorkout(idx){
