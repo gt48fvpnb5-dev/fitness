@@ -139,10 +139,10 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 .timer-close{margin-top:12px;padding:10px 28px;border-radius:20px;border:1px solid var(--border2);background:none;color:var(--text2);font-family:'Syne',sans-serif;font-size:13px;cursor:pointer;}
 
 /* SWIPE DELETE */
-.hist-wrap{position:relative;margin:0 16px 10px;border-radius:var(--radius);}
+.hist-wrap{position:relative;margin:0 16px 10px;border-radius:var(--radius);overflow:visible;}
 .hist-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;position:relative;transition:transform 0.3s var(--ease-out);touch-action:pan-y;z-index:1;}
-.hist-delete-circle{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:0;}
-.hist-delete-circle.visible{opacity:1;}
+.hist-delete-circle{position:absolute;right:-56px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:right 0.3s var(--ease-out);z-index:2;pointer-events:none;}
+.hist-delete-circle.visible{right:-52px;pointer-events:all;}
 .hist-delete-circle svg{width:18px;height:18px;}
 .hist-date{font-family:'Syne',sans-serif;font-size:11px;color:var(--text3);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;}
 .hist-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin:4px 0;}
@@ -238,6 +238,18 @@ canvas{width:100%!important;max-height:200px;}
     <div class="delete-btns">
       <button class="delete-no" onclick="closeDeleteModal()">Annuler</button>
       <button class="delete-yes" onclick="executeDelete()">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- REOPEN CONFIRM MODAL -->
+<div id="reopen-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 16px);">
+  <div class="delete-box">
+    <div class="delete-title">Rouvrir la séance ?</div>
+    <div class="delete-sub">Elle sera retirée de l'historique et tu pourras la modifier.</div>
+    <div class="delete-btns">
+      <button class="delete-no" onclick="closeReopenModal()">Annuler</button>
+      <button class="confirm-yes" onclick="executeReopen()">Rouvrir</button>
     </div>
   </div>
 </div>
@@ -945,12 +957,12 @@ function renderHistory(){
     card.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;currentX=0;},{passive:true});
     card.addEventListener('touchmove',e=>{
       currentX=e.touches[0].clientX-startX;
-      if(currentX<0) card.style.transform=`translateX(${Math.max(currentX,-60)}px)`;
-      else if(activeSwipe===card) card.style.transform='translateX(-60px)';
+      if(currentX<0) card.style.transform=`translateX(${Math.max(currentX,-70)}px)`;
+      else if(activeSwipe===card) card.style.transform='translateX(-70px)';
     },{passive:true});
     card.addEventListener('touchend',()=>{
-      if(currentX<-30){
-        card.style.transform='translateX(-60px)';
+      if(currentX<-40){
+        card.style.transform='translateX(-70px)';
         deleteCircle.classList.add('visible');
         activeSwipe=card;
       } else {
@@ -1001,10 +1013,24 @@ function executeDelete(){
   renderSessions();
 }
 
+let pendingReopenIdx=null;
+
 function reopenWorkout(idx){
+  pendingReopenIdx=idx;
+  document.getElementById('reopen-modal').style.display='flex';
+}
+
+function closeReopenModal(){
+  document.getElementById('reopen-modal').style.display='none';
+  pendingReopenIdx=null;
+}
+
+function executeReopen(){
+  closeReopenModal();
+  const idx=pendingReopenIdx;
+  if(idx===null)return;
   const entry=state.history[idx];
   if(!entry)return;
-  // Remove from history immediately
   state.history.splice(idx,1);
   const doneKey=`done_b${entry.blockIdx}w${entry.week}_s${entry.sessionIdx}`;
   delete state[doneKey];
