@@ -156,8 +156,10 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 /* DELETE CONFIRM MODAL */
 #delete-modal{display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 20px);}
 #delete-modal.show{display:flex;}
+#delete-modal .delete-box{transform:translateY(100%);transition:transform 0.4s var(--spring);}
+#delete-modal.show .delete-box{transform:translateY(0);}
 .delete-box{background:var(--bg2);border:1px solid var(--border2);border-radius:24px;padding:24px;width:calc(100% - 40px);max-width:400px;}
-.delete-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;margin-bottom:8px;}
+.delete-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;margin-bottom:8px;white-space:nowrap;}
 .delete-sub{font-size:13px;color:var(--text2);margin-bottom:20px;}
 .delete-btns{display:flex;gap:10px;}
 .delete-yes{flex:1;padding:14px;border-radius:12px;background:var(--red);border:none;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#fff;cursor:pointer;}
@@ -181,6 +183,8 @@ canvas{width:100%!important;max-height:200px;}
 /* CONFIRM MODAL */
 #confirm-modal{display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 20px);}
 #confirm-modal.show{display:flex;}
+#confirm-modal .confirm-box{transform:translateY(100%);transition:transform 0.4s var(--spring);}
+#confirm-modal.show .confirm-box{transform:translateY(0);}
 .confirm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:24px;padding:24px;width:calc(100% - 40px);max-width:400px;}
 .confirm-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:8px;}
 .confirm-sub{font-size:13px;color:var(--text2);margin-bottom:20px;}
@@ -243,8 +247,8 @@ canvas{width:100%!important;max-height:200px;}
 </div>
 
 <!-- REOPEN CONFIRM MODAL -->
-<div id="reopen-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 16px);">
-  <div class="delete-box">
+<div id="reopen-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center;padding-bottom:calc(env(safe-area-inset-bottom) + 20px);">
+  <div class="delete-box" id="reopen-box" style="transform:translateY(100%);transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);">
     <div class="delete-title">Rouvrir la séance ?</div>
     <div class="delete-sub">Elle sera retirée de l'historique et tu pourras la modifier.</div>
     <div class="delete-btns">
@@ -861,7 +865,8 @@ function closeWorkout(){
 }
 
 function finishWorkout(){
-  document.getElementById('confirm-modal').classList.add('show');
+  const modal=document.getElementById('confirm-modal');
+  modal.classList.add('show');
 }
 
 function closeConfirm(){
@@ -1024,11 +1029,17 @@ let pendingReopenIdx=null;
 
 function reopenWorkout(idx){
   pendingReopenIdx=idx;
-  document.getElementById('reopen-modal').style.display='flex';
+  const modal=document.getElementById('reopen-modal');
+  const box=document.getElementById('reopen-box');
+  modal.style.display='flex';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{box.style.transform='translateY(0)';}));
 }
 
 function closeReopenModal(){
-  document.getElementById('reopen-modal').style.display='none';
+  const modal=document.getElementById('reopen-modal');
+  const box=document.getElementById('reopen-box');
+  box.style.transform='translateY(100%)';
+  setTimeout(()=>{modal.style.display='none';},400);
   pendingReopenIdx=null;
 }
 
