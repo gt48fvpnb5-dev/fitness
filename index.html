@@ -1174,10 +1174,13 @@ function switchProgView(view, el){
   el.classList.add('active');
   document.getElementById('prog-view-bloc').style.display=view==='bloc'?'block':'none';
   document.getElementById('prog-view-all').style.display=view==='all'?'block':'none';
-  document.getElementById('stat-grid').innerHTML='';
-  document.getElementById('chart-area-wrap').style.display='none';
-  document.getElementById('ex-history-list').innerHTML='';
-  if(view==='bloc') renderBlocExList();
+  document.getElementById('chart-area-wrap').style.display='block';
+  if(view==='bloc'){
+    renderBlocExList();
+  } else {
+    const sel=document.getElementById('ex-select');
+    renderChartForEx(sel.value);
+  }
 }
 
 function buildBlocExerciseList(blockIdx){
@@ -1196,6 +1199,9 @@ function renderBlocExList(){
   if(state.progExBloc && exercises.includes(state.progExBloc)){
     sel.value=state.progExBloc;
   }
+  // Auto-render chart
+  document.getElementById('chart-area-wrap').style.display='block';
+  renderChartForEx(sel.value);
 }
 
 function renderChartBloc(){
@@ -1254,21 +1260,12 @@ function renderProgressPage(){
   document.getElementById('prog-view-bloc').style.display=currentProgView==='bloc'?'block':'none';
   document.getElementById('prog-view-all').style.display=currentProgView==='all'?'block':'none';
 
+  document.getElementById('chart-area-wrap').style.display='block';
+
   if(currentProgView==='bloc'){
     renderBlocExList();
-    if(state.progExBloc){
-      document.getElementById('chart-area-wrap').style.display='block';
-      renderChartForEx(state.progExBloc);
-    } else {
-      document.getElementById('chart-area-wrap').style.display='none';
-    }
   } else {
-    if(state.progExAll){
-      document.getElementById('chart-area-wrap').style.display='block';
-      renderChartForEx(state.progExAll);
-    } else {
-      document.getElementById('chart-area-wrap').style.display='none';
-    }
+    renderChartForEx(sel.value);
   }
 }
 
