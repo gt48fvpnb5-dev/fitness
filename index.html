@@ -167,12 +167,30 @@ h1,h2,h3,.syne{font-family:'Syne',sans-serif;}
 
 /* PROGRESS PAGE */
 .ex-select{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 14px;margin:0 0 16px;-webkit-appearance:none;}
-.chart-area{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin:0 16px 12px;overflow:hidden;}
+.chart-area{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin:0 16px 12px;overflow:hidden;position:relative;}
 canvas{width:100%!important;max-height:200px;}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px;margin-bottom:12px;}
 .stat-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
 .stat-val{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--accent);}
 .stat-lbl{font-size:11px;color:var(--text2);margin-top:4px;}
+
+/* EXERCISE LIST IN BLOC VIEW */
+.prog-session-label{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);padding:0 16px;margin:16px 0 6px;}
+.prog-ex-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;margin:0 16px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);cursor:pointer;transition:border-color 0.2s;}
+.prog-ex-item:active{border-color:var(--accent);}
+.prog-ex-item.active{border-color:var(--accent);background:var(--bg3);}
+.prog-ex-name{font-size:13px;font-weight:500;}
+.prog-ex-record{font-size:11px;color:var(--text3);}
+.prog-ex-arrow{color:var(--text3);font-size:16px;transition:transform 0.2s;}
+.prog-ex-item.active .prog-ex-arrow{transform:rotate(90deg);color:var(--accent);}
+
+/* PR BADGE */
+.pr-badge{display:inline-flex;align-items:center;gap:3px;background:#f0a04020;border:1px solid var(--amber);color:var(--amber);font-family:'Syne',sans-serif;font-size:10px;font-weight:700;padding:2px 6px;border-radius:20px;margin-left:6px;}
+
+/* SERIES COLOR INDICATORS */
+.weight-input.better{border-color:#40d0a080;background:#40d0a010;}
+.weight-input.worse{border-color:#ff5f5f80;background:#ff5f5f10;}
+.weight-input.same{border-color:#f0a04080;background:#f0a04010;}
 
 /* FINISH BAR */
 .finish-bar{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 20px);left:20px;right:20px;background:var(--accent);border-radius:24px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;z-index:300;display:none;}
@@ -321,11 +339,27 @@ canvas{width:100%!important;max-height:200px;}
     <div class="page-title syne">Progression</div>
     <div class="page-sub">Évolution par exercice</div>
   </div>
-  <div style="padding:0 16px;">
-    <select class="ex-select" id="ex-select" onchange="renderChart()"></select>
+  <div class="week-pills" style="margin-bottom:16px;">
+    <div class="pill active" id="prog-pill-bloc" onclick="switchProgView('bloc',this)">Mon bloc</div>
+    <div class="pill" id="prog-pill-all" onclick="switchProgView('all',this)">Tous</div>
   </div>
+
+  <!-- VIEW: Mon bloc -->
+  <div id="prog-view-bloc">
+    <div style="padding:0 16px;">
+      <select class="ex-select" id="ex-select-bloc" onchange="renderChartBloc()"></select>
+    </div>
+  </div>
+
+  <!-- VIEW: Tous -->
+  <div id="prog-view-all" style="display:none;">
+    <div style="padding:0 16px;">
+      <select class="ex-select" id="ex-select" onchange="renderChart()"></select>
+    </div>
+  </div>
+
   <div class="stat-grid" id="stat-grid"></div>
-  <div class="chart-area">
+  <div class="chart-area" id="chart-area-wrap">
     <canvas id="prog-chart" height="180"></canvas>
   </div>
   <div id="ex-history-list" style="padding:0 16px;"></div>
@@ -729,22 +763,34 @@ function openWorkout(blockIdx, sessionIdx, week){
       for(let si2=0;si2<ex.sets;si2++){
         const serieKey=`s${si2}`;
         const savedWeight=exSaved[serieKey]||'';
-        const prevWeight=prevData&&prevData[serieKey]?prevData[serieKey]:'';
+        const prevWeight=prevData&&prevData[serieKey]?parseFloat(prevData[serieKey]):null;
         const isDoneS=exSaved[`done_${serieKey}`]||false;
-
         const repsDisplay=getRepsForSerie(ex.reps,si2);
+
+        // Color indicator
+        let colorClass='';
+        if(savedWeight&&prevWeight){
+          const sw=parseFloat(savedWeight);
+          if(sw>prevWeight) colorClass=' better';
+          else if(sw<prevWeight) colorClass=' worse';
+          else colorClass=' same';
+        } else if(savedWeight) colorClass=' filled';
+
+        // PR badge
+        const allTimeRecord=getExRecord(ex.name);
+        const isPR=savedWeight&&parseFloat(savedWeight)>0&&parseFloat(savedWeight)>=allTimeRecord&&allTimeRecord>0;
 
         const row=document.createElement('div');
         row.className='series-row';
         row.innerHTML=`
           <div class="series-num">${si2+1}</div>
           <div class="series-target">
-            <div style="font-size:13px;color:var(--text);font-weight:500;">${repsDisplay} reps</div>
+            <div style="font-size:13px;color:var(--text);font-weight:500;">${repsDisplay} reps${isPR?'<span class="pr-badge">🏆 PR</span>':''}</div>
             ${prevWeight?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">Sem.préc: ${prevWeight}kg</div>`:''}
           </div>
-          <input class="weight-input${savedWeight?' filled':''}" type="number" inputmode="decimal" placeholder="${prevWeight?prevWeight+'kg':'kg'}" value="${savedWeight}" 
+          <input class="weight-input${colorClass}" type="number" inputmode="decimal" placeholder="${prevWeight?prevWeight+'kg':'kg'}" value="${savedWeight}" 
             data-ex="${exKey}" data-serie="${serieKey}" data-block="${blockIdx}" data-session="${sessionIdx}" data-week="${week}"
-            oninput="saveWeight(this)" step="0.5" min="0">
+            oninput="saveWeightAndRefresh(this,${blockIdx},${sessionIdx},${week})" step="0.5" min="0">
           <button class="done-btn${isDoneS?' active':''}" data-ex="${exKey}" data-done="${serieKey}" onclick="toggleDone(this,${blockIdx},${sessionIdx},${week})">
             <svg class="done-check" viewBox="0 0 16 16" fill="none"><path d="M3 8L6.5 11.5L13 4.5" stroke="${isDoneS?'#0a0a0a':'currentColor'}" stroke-width="1.5" stroke-linecap="round"/></svg>
           </button>
@@ -805,9 +851,33 @@ function saveWeight(input){
   if(!state[key])state[key]={};
   if(!state[key][ex])state[key][ex]={};
   state[key][ex][serie]=input.value;
-  if(input.value) input.classList.add('filled');
-  else input.classList.remove('filled');
   save();
+}
+
+function saveWeightAndRefresh(input, blockIdx, sessionIdx, week){
+  saveWeight(input);
+  // Update color class
+  const {ex,serie}=input.dataset;
+  const prevKey=week>1?`workout_b${blockIdx}w${week-1}_s${sessionIdx}`:null;
+  const prevData=prevKey&&state[prevKey]?state[prevKey][ex]:null;
+  const prevWeight=prevData&&prevData[serie]?parseFloat(prevData[serie]):null;
+  const val=parseFloat(input.value);
+  input.className='weight-input';
+  if(input.value&&prevWeight){
+    if(val>prevWeight) input.classList.add('better');
+    else if(val<prevWeight) input.classList.add('worse');
+    else input.classList.add('same');
+  } else if(input.value){
+    input.classList.add('filled');
+  }
+  // Check PR
+  const allTimeRecord=getExRecord(input.closest('.ex-block')?.querySelector('.ex-name')?.textContent||'');
+  if(val>0&&val>=allTimeRecord&&allTimeRecord>0){
+    const repsDiv=input.closest('.series-row')?.querySelector('.series-target div');
+    if(repsDiv&&!repsDiv.querySelector('.pr-badge')){
+      repsDiv.innerHTML+=`<span class="pr-badge">🏆 PR</span>`;
+    }
+  }
 }
 
 const SHEETS_URL='https://script.google.com/macros/s/AKfycbyAnRKartabOvH0mHADFyoNdWgQazp8U6lK9zrnBo8-wC6FB4yXrdpSjUACB5OdIs1G/exec';
@@ -1092,17 +1162,126 @@ function buildExerciseList(){
   return [...all].sort();
 }
 
-function renderProgressPage(){
-  const sel=document.getElementById('ex-select');
-  const exercises=buildExerciseList();
+// --- PROGRESS ---
+let currentProgView='bloc';
+let activeProgEx=null;
+
+function switchProgView(view, el){
+  currentProgView=view;
+  state.progView=view;
+  save();
+  document.querySelectorAll('#page-progress .week-pills .pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('prog-view-bloc').style.display=view==='bloc'?'block':'none';
+  document.getElementById('prog-view-all').style.display=view==='all'?'block':'none';
+  document.getElementById('stat-grid').innerHTML='';
+  document.getElementById('chart-area-wrap').style.display='none';
+  document.getElementById('ex-history-list').innerHTML='';
+  if(view==='bloc') renderBlocExList();
+}
+
+function buildBlocExerciseList(blockIdx){
+  const seen=new Set();
+  const bloc=PROGRAM[blockIdx];
+  bloc.sessions.forEach(s=>s.groups.forEach(g=>g.exercises.forEach(ex=>{
+    if(!seen.has(ex.name)) seen.add(ex.name);
+  })));
+  return [...seen];
+}
+
+function renderBlocExList(){
+  const exercises=buildBlocExerciseList(state.block);
+  const sel=document.getElementById('ex-select-bloc');
   sel.innerHTML=exercises.map(e=>`<option value="${e}">${e}</option>`).join('');
-  renderChart();
+  if(state.progExBloc && exercises.includes(state.progExBloc)){
+    sel.value=state.progExBloc;
+  }
+}
+
+function renderChartBloc(){
+  const exName=document.getElementById('ex-select-bloc').value;
+  state.progExBloc=exName;
+  save();
+  document.getElementById('chart-area-wrap').style.display='block';
+  renderChartForEx(exName);
 }
 
 function renderChart(){
   const exName=document.getElementById('ex-select').value;
-  const dataPoints=[];
+  state.progExAll=exName;
+  save();
+  document.getElementById('chart-area-wrap').style.display='block';
+  renderChartForEx(exName);
+}
 
+function getExRecord(exName, blockFilter){
+  let max=0;
+  if(!state.history) return 0;
+  state.history.forEach(entry=>{
+    if(blockFilter!==undefined && entry.blockIdx!==blockFilter) return;
+    const s=PROGRAM[entry.blockIdx].sessions[entry.sessionIdx];
+    s.groups.forEach((g,gi)=>{
+      g.exercises.forEach((ex,ei)=>{
+        if(ex.name===exName){
+          const saved=state[entry.storageKey]?state[entry.storageKey][`g${gi}_e${ei}`]:null;
+          if(saved){
+            for(let si=0;si<ex.sets;si++){
+              const w=parseFloat(saved[`s${si}`])||0;
+              if(w>max) max=w;
+            }
+          }
+        }
+      });
+    });
+  });
+  return max;
+}
+
+function renderProgressPage(){
+  // Restore saved view
+  if(state.progView) currentProgView=state.progView;
+
+  // Build selects
+  const sel=document.getElementById('ex-select');
+  const exercises=buildExerciseList();
+  sel.innerHTML=exercises.map(e=>`<option value="${e}">${e}</option>`).join('');
+  if(state.progExAll) sel.value=state.progExAll;
+
+  // Set pills
+  document.getElementById('prog-pill-bloc').classList.toggle('active', currentProgView==='bloc');
+  document.getElementById('prog-pill-all').classList.toggle('active', currentProgView==='all');
+
+  document.getElementById('prog-view-bloc').style.display=currentProgView==='bloc'?'block':'none';
+  document.getElementById('prog-view-all').style.display=currentProgView==='all'?'block':'none';
+
+  if(currentProgView==='bloc'){
+    renderBlocExList();
+    if(state.progExBloc){
+      document.getElementById('chart-area-wrap').style.display='block';
+      renderChartForEx(state.progExBloc);
+    } else {
+      document.getElementById('chart-area-wrap').style.display='none';
+    }
+  } else {
+    if(state.progExAll){
+      document.getElementById('chart-area-wrap').style.display='block';
+      renderChartForEx(state.progExAll);
+    } else {
+      document.getElementById('chart-area-wrap').style.display='none';
+    }
+  }
+}
+
+function renderChart(){
+  const exName=document.getElementById('ex-select').value;
+  state.progExAll=exName;
+  save();
+  document.getElementById('chart-area-wrap').style.display='block';
+  renderChartForEx(exName);
+}
+
+function renderChartForEx(exName){
+  const dataPoints=[];
   // Gather all history entries that have this exercise
   if(!state.history||state.history.length===0){
     renderEmptyChart();
