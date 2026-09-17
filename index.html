@@ -119,8 +119,11 @@ body{background:var(--bg2);color:var(--text);font-family:'DM Sans',sans-serif;he
 .rpe-btn.selected{background:var(--accent);border-color:var(--accent);color:#0a0a0a;}
 
 /* ─── FINISH BAR ─── */
-.finish-bar{position:fixed;bottom:20px;left:20px;right:20px;background:var(--accent);border-radius:24px;padding:14px 20px;display:none;align-items:center;justify-content:space-between;z-index:300;}
-.finish-bar.show{display:flex;}
+.finish-bar{position:fixed;bottom:20px;left:20px;right:20px;background:var(--accent);border-radius:24px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;z-index:300;
+  transform:translateY(160%);opacity:0;pointer-events:none;transition:transform .28s cubic-bezier(.4,0,1,1),opacity .2s;box-shadow:0 10px 30px #0008;}
+/* Apparaît seulement en bas de la séance, avec un petit saut */
+.finish-bar.visible{transform:translateY(0);opacity:1;pointer-events:auto;animation:finishPop .6s var(--ease) both;}
+@keyframes finishPop{0%{transform:translateY(160%);opacity:0}45%{transform:translateY(-16px);opacity:1}70%{transform:translateY(4px)}85%{transform:translateY(-3px)}100%{transform:translateY(0)}}
 .finish-text{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#0a0a0a;}
 .finish-btn{background:#0a0a0a;color:var(--accent);border:none;border-radius:8px;padding:8px 16px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;}
 
@@ -1148,9 +1151,21 @@ function openWorkout(bIdx,sIdx,wk,cycle){
   wv.scrollTop=0;
   wv.style.display='block';
   requestAnimationFrame(()=>requestAnimationFrame(()=>wv.classList.add('open')));
-  document.getElementById('finish-bar').classList.add('show');
+  document.getElementById('finish-bar').classList.remove('visible');
+  requestAnimationFrame(updateFinishBar);
   document.body.style.overflow='hidden';
 }
+
+// Barre "Séance terminée ?" : visible uniquement quand on est tout en bas
+function updateFinishBar(){
+  const wv=document.getElementById('workout-view'),bar=document.getElementById('finish-bar');
+  if(!S.currentWorkout||!wv.classList.contains('open')&&wv.style.display!=='block'){bar.classList.remove('visible');return;}
+  const gap=wv.scrollHeight-wv.clientHeight-wv.scrollTop;
+  const shown=bar.classList.contains('visible');
+  if(!shown&&gap<=40)bar.classList.add('visible');
+  else if(shown&&gap>90)bar.classList.remove('visible');
+}
+document.getElementById('workout-view').addEventListener('scroll',updateFinishBar,{passive:true});
 
 function onWeightInput(input){
   const cw=S.currentWorkout;if(!cw)return;
@@ -1199,7 +1214,7 @@ function onDoneClick(btn){
 function closeWorkout(){
   const wv=document.getElementById('workout-view');
   wv.classList.remove('open');
-  document.getElementById('finish-bar').classList.remove('show');
+  document.getElementById('finish-bar').classList.remove('visible');
   document.body.style.overflow='';
   setTimeout(()=>wv.style.display='none',420);
   S.currentWorkout=null;
