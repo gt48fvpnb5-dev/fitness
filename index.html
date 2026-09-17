@@ -172,6 +172,40 @@ canvas{width:100%!important;max-height:200px;}
 .stat-val{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--accent);}
 .stat-lbl{font-size:11px;color:var(--text2);margin-top:4px;}
 .detail-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:8px;}
+
+/* ─── MULTI-PROGRAMME ─── */
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.prog-row .badge{margin-bottom:0;}
+.switch-btn{font-family:'Syne',sans-serif;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;transition:transform .2s var(--spring);}
+.switch-btn:active{transform:scale(0.92);}
+.cycle-chip{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);border:1px solid #40d0a060;padding:3px 9px;border-radius:20px;}
+.block-note{margin:10px 16px 0;padding:10px 14px;border-radius:var(--r2);background:var(--bg3);border-left:3px solid var(--accent);font-size:12px;color:var(--text2);line-height:1.5;}
+#program-view{display:none;position:fixed;inset:0;background:var(--bg);z-index:250;overflow-y:auto;padding-bottom:40px;transform:translateX(100%);transition:transform .42s var(--ease);}
+#program-view.open{transform:translateX(0);}
+.prog-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin:0 16px 12px;cursor:pointer;transition:border-color .2s,transform .15s var(--spring);animation:cardIn .4s var(--ease) both;}
+.prog-card:active{transform:scale(0.97);}
+.prog-card.active{border-color:var(--accent);}
+.prog-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.prog-card-name{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;}
+.prog-card-desc{font-size:13px;color:var(--text2);margin-top:6px;line-height:1.45;}
+.prog-card-meta{font-size:11px;color:var(--text3);margin-top:10px;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
+.ex-tag.rpe{border-color:#c8f06040;color:var(--accent);}
+.superset-tag{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:#0a0a0a;background:var(--amber);padding:2px 7px;border-radius:20px;margin-right:6px;}
+.end-card{margin:6px 16px 10px;padding:16px;border-radius:var(--r);background:#c8f06012;border:1px solid #c8f06060;cursor:pointer;}
+.end-card-title{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:var(--accent);}
+.end-card-sub{font-size:12px;color:var(--text2);margin-top:4px;}
+.modal-box.tall{max-height:86vh;overflow-y:auto;}
+.modal-btns.col{flex-direction:column;}
+.cycle-body{font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:18px;}
+.verdict{padding:12px 14px;border-radius:var(--r2);margin-bottom:14px;border:1px solid var(--border2);background:var(--bg3);}
+.verdict.good{border-color:#40d0a080;background:#40d0a012;}
+.verdict.warn{border-color:#f0a04080;background:#f0a04012;}
+.verdict-title{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:var(--text);margin-bottom:4px;}
+.guide-item{margin-top:12px;}
+.guide-item b{display:block;font-family:'Syne',sans-serif;font-size:13px;color:var(--text);margin-bottom:2px;}
+.ex-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.ex-chip{font-size:11px;padding:3px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--border2);color:var(--text2);}
+.ex-chip.stuck{border-color:#ff5f5f80;color:var(--red);}
 </style>
 </head>
 <body>
@@ -184,6 +218,19 @@ canvas{width:100%!important;max-height:200px;}
     <div class="timer-track"><div class="timer-fill" id="timer-fill" style="width:100%"></div></div>
     <button class="timer-close" onclick="closeTimer()">Fermer</button>
   </div>
+</div>
+
+<!-- PROGRAM PICKER -->
+<div id="program-view">
+  <div class="workout-header">
+    <button class="back-btn" id="pv-back" onclick="closeProgramPicker()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Retour
+    </button>
+    <div class="workout-title">Choisis ton programme</div>
+    <div class="workout-sub">Ton choix est mémorisé. Historique, records et progression restent séparés par programme.</div>
+  </div>
+  <div id="pv-list" style="padding-top:16px;"></div>
 </div>
 
 <!-- WORKOUT OVERLAY -->
@@ -245,20 +292,35 @@ canvas{width:100%!important;max-height:200px;}
   </div>
 </div>
 
+<!-- MODAL: FIN DE CYCLE -->
+<div id="modal-cycle" class="modal-overlay">
+  <div class="modal-box tall">
+    <div class="modal-title" id="cycle-title">Cycle terminé</div>
+    <div class="cycle-body" id="cycle-body"></div>
+    <div class="modal-btns col">
+      <button class="modal-confirm green" onclick="startNextCycle()">Continuer : lancer le cycle suivant</button>
+      <button class="modal-cancel" onclick="hideModal('cycle');setTimeout(openProgramPicker,420)">Changer de programme</button>
+      <button class="modal-cancel" onclick="hideModal('cycle')">Plus tard</button>
+    </div>
+  </div>
+</div>
+
 <!-- PAGE: PROGRAMME -->
 <div class="page active" id="page-home">
   <div class="header">
-    <div class="badge">Programme 4 séances</div>
+    <div class="prog-row">
+      <div class="badge" id="prog-badge">Programme</div>
+      <span class="cycle-chip" id="cycle-chip" style="display:none"></span>
+      <button class="switch-btn" onclick="openProgramPicker()">Changer ↻</button>
+    </div>
     <div class="page-title syne">FITMASS<br>Tracker</div>
-    <div class="page-sub">Choisis ton bloc de semaines</div>
+    <div class="page-sub" id="home-sub">Choisis ton bloc de semaines</div>
   </div>
+  <div id="end-card-slot"></div>
   <div class="section-label">Bloc de semaines</div>
-  <div class="pills" id="block-pills">
-    <div class="pill active" onclick="selectBlock(0,this)">Sem. 1–3</div>
-    <div class="pill" onclick="selectBlock(1,this)">Sem. 4–5</div>
-    <div class="pill" onclick="selectBlock(2,this)">Sem. 6–7</div>
-  </div>
-  <div class="section-label" style="margin-top:16px;">Semaine dans le bloc</div>
+  <div class="pills" id="block-pills"></div>
+  <div id="block-note"></div>
+  <div class="section-label" style="margin-top:16px;">Semaine</div>
   <div class="pills" id="week-pills"></div>
   <div class="section-label" style="margin-top:16px;">Séances</div>
   <div id="sessions-list"></div>
@@ -267,9 +329,9 @@ canvas{width:100%!important;max-height:200px;}
 <!-- PAGE: HISTORIQUE -->
 <div class="page" id="page-history">
   <div class="header">
-    <div class="badge">Journal</div>
+    <div class="badge" id="hist-badge">Journal</div>
     <div class="page-title syne">Historique</div>
-    <div class="page-sub">Toutes tes séances</div>
+    <div class="page-sub">Séances du programme actif</div>
   </div>
   <div id="history-list"></div>
 </div>
@@ -277,9 +339,9 @@ canvas{width:100%!important;max-height:200px;}
 <!-- PAGE: PROGRESSION -->
 <div class="page" id="page-progress">
   <div class="header">
-    <div class="badge">Stats</div>
+    <div class="badge" id="prog-page-badge">Stats</div>
     <div class="page-title syne">Progression</div>
-    <div class="page-sub">Évolution par exercice</div>
+    <div class="page-sub">Évolution par exercice (programme actif)</div>
   </div>
   <div class="pills" style="margin-bottom:16px;">
     <div class="pill active" id="pill-bloc" onclick="switchProgView('bloc',this)">Mon bloc</div>
@@ -317,9 +379,9 @@ canvas{width:100%!important;max-height:200px;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
 // ═══════════════════════════════════════════
-// PROGRAMME DATA
+// PROGRAMME FITMASS (données originales)
 // ═══════════════════════════════════════════
-const PROGRAM=[
+const FITMASS_BLOCKS=[
   {label:"Semaines 1–3",weeks:3,sessions:[
     {num:1,name:"Upper",groups:[
       {rest:90,exercises:[
@@ -497,13 +559,134 @@ const PROGRAM=[
 ];
 
 // ═══════════════════════════════════════════
+// PROGRAMME RECOMP UPPER/LOWER
+// Fourchettes de reps écrites avec un tiret long "–" (ex. "5–6") :
+// le tiret court "-" est réservé aux reps par série (ex. "10-8-6-4").
+// ═══════════════════════════════════════════
+const RECOMP_BASE=[
+  {num:1,name:"Upper A — Force",groups:[
+    {rest:120,exercises:[{name:"Développé couché barre",sets:4,reps:"5–6",rpe:"8"}]},
+    {rest:120,exercises:[{name:"Rowing barre",note:"Type Pendlay",sets:3,reps:"6–8",rpe:"8"}]},
+    {rest:90,superset:true,exercises:[
+      {name:"Développé militaire haltères (debout)",sets:3,reps:"8–10",rpe:"8"},
+      {name:"Tirage vertical",note:"Poulie haute",sets:3,reps:"8–10",rpe:"8"},
+    ]},
+    {rest:60,superset:true,exercises:[
+      {name:"Développé incliné haltères",sets:3,reps:"10–12",rpe:"8–9"},
+      {name:"Face pull",sets:3,reps:"15",rpe:"8"},
+    ]},
+    {rest:45,exercises:[{name:"Curl biceps",sets:2,reps:"12",rpe:"9"}]},
+    {rest:45,exercises:[{name:"Extension triceps poulie",sets:2,reps:"12",rpe:"9"}]},
+  ]},
+  {num:2,name:"Lower B — Force",groups:[
+    {rest:150,exercises:[{name:"Squat",sets:4,reps:"5–6",rpe:"8"}]},
+    {rest:120,exercises:[{name:"Soulevé de terre roumain",sets:3,reps:"8–10",rpe:"8"}]},
+    {rest:90,superset:true,exercises:[
+      {name:"Presse à cuisses",sets:3,reps:"10–12",rpe:"8–9"},
+      {name:"Fentes bulgares",note:"Une série = les deux jambes",sets:3,reps:"10/jambe",rpe:"8"},
+    ]},
+    {rest:60,exercises:[{name:"Leg curl",sets:3,reps:"12",rpe:"9"}]},
+    {rest:60,exercises:[{name:"Mollets debout",sets:3,reps:"15",rpe:"9"}]},
+    {rest:45,exercises:[{name:"Gainage",note:"Planche ou Pallof press · finisher",sets:2,reps:"30–45 s"}]},
+  ]},
+  {num:3,name:"Upper C — Volume",groups:[
+    {rest:120,exercises:[{name:"Développé incliné barre/machine",sets:4,reps:"8–10",rpe:"8"}]},
+    {rest:120,exercises:[{name:"Rowing haltère unilatéral",sets:3,reps:"10–12",rpe:"8"}]},
+    {rest:90,superset:true,exercises:[
+      {name:"Développé militaire haltères (assis)",sets:3,reps:"10–12",rpe:"8"},
+      {name:"Tirage vertical prise large",sets:3,reps:"10–12",rpe:"8–9"},
+    ]},
+    {rest:60,exercises:[{name:"Écarté poulie",note:"Ou pec deck",sets:3,reps:"12–15",rpe:"9"}]},
+    {rest:45,exercises:[{name:"Curl marteau",sets:3,reps:"12",rpe:"9"}]},
+    {rest:45,exercises:[{name:"Extension triceps poulie",sets:2,reps:"12",rpe:"9"}]},
+  ]},
+  {num:4,name:"Lower D — Volume",groups:[
+    {rest:180,exercises:[{name:"Soulevé de terre",note:"Conventionnel · échauffement progressif",sets:4,reps:"5",rpe:"8"}]},
+    {rest:120,exercises:[{name:"Hack squat",sets:3,reps:"10–12",rpe:"8–9"}]},
+    {rest:90,superset:true,exercises:[
+      {name:"Hip thrust",sets:3,reps:"10–12",rpe:"8"},
+      {name:"Leg extension",sets:3,reps:"12–15",rpe:"9"},
+    ]},
+    {rest:60,exercises:[{name:"Mollets assis",sets:3,reps:"15",rpe:"9"}]},
+    {rest:45,exercises:[{name:"Gainage / abdos",note:"Finisher · à sauter si tu manques de temps",sets:2,reps:"30–45 s"}]},
+  ]},
+];
+
+// Dérive une variante (rampe / deload) : séries ajustées + RPE cible
+const scaleSessions=(base,setsFn,rpe)=>base.map(s=>({...s,groups:s.groups.map(g=>({...g,
+  exercises:g.exercises.map(e=>({...e,sets:setsFn(e.sets),rpe:e.rpe?rpe:undefined}))}))}));
+
+// ═══════════════════════════════════════════
+// CATALOGUE DES PROGRAMMES
+// Bloc : weeks, tag, note, main (bloc analysé en fin de cycle),
+// firstCycleOnly (sauté à partir du cycle 2), weeksLaterCycles.
+// ═══════════════════════════════════════════
+const PROGRAMS={
+  fitmass:{
+    name:"FITMASS",
+    desc:"Programme original en 3 blocs de 7 semaines, séances en paires d'exercices avec cardio/finisher.",
+    blocks:FITMASS_BLOCKS,
+  },
+  recomp:{
+    name:"Recomp Upper/Lower",
+    desc:"4 séances Upper/Lower (force + volume), ≤ 1 h. Reprise progressive, plein volume, deload, puis bilan de cycle.",
+    cycles:true,
+    blocks:[
+      {tag:"Rampe",weeks:2,firstCycleOnly:true,
+       note:"Reprise : ~70 % du volume (une série de moins), RPE 6–7. Garde 3–4 reps en réserve, jamais à l'échec.",
+       sessions:scaleSessions(RECOMP_BASE,n=>n>2?n-1:n,"6–7")},
+      {tag:"Plein volume",weeks:3,weeksLaterCycles:4,main:true,
+       note:"Double progression : monte les reps dans la fourchette, puis augmente la charge. Respecte le RPE cible.",
+       sessions:RECOMP_BASE},
+      {tag:"Deload",weeks:1,
+       note:"Volume réduit (~40 % de moins), charges ~10–15 % plus légères, RPE 5–6. Le but est de récupérer, pas de performer.",
+       sessions:scaleSessions(RECOMP_BASE,n=>n>=3?2:1,"5–6")},
+    ],
+  },
+};
+
+// ═══════════════════════════════════════════
 // STATE & PERSISTENCE
 // ═══════════════════════════════════════════
 const STORE_KEY='fitmass_v2';
-let S={block:0,weekInBlock:1,history:[],currentWorkout:null};
-const save=()=>localStorage.setItem(STORE_KEY,JSON.stringify(S));
+let S={activeProgram:null,progState:{},history:[],currentWorkout:null};
+const save=()=>{try{localStorage.setItem(STORE_KEY,JSON.stringify(S));}catch(e){}};
 const load=()=>{try{const d=localStorage.getItem(STORE_KEY);if(d)S=JSON.parse(d);}catch(e){}};
-load();
+
+// Migration des données existantes (ancienne version mono-programme = FITMASS)
+function migrate(){
+  if(!S.progState)S.progState={};
+  if(!S.progState.fitmass&&(S.block!==undefined||S.weekInBlock!==undefined||(S.history&&S.history.length))){
+    S.progState.fitmass={block:S.block||0,weekInBlock:S.weekInBlock||1,cycle:1};
+  }
+  delete S.block;delete S.weekInBlock;
+  if(!S.history)S.history=[];
+  S.history.forEach(h=>{if(!h.programId)h.programId='fitmass';if(!h.cycle)h.cycle=1;});
+  if(S.activeProgram&&!PROGRAMS[S.activeProgram])S.activeProgram=null;
+  Object.keys(PROGRAMS).forEach(pid=>{
+    if(!S.progState[pid])S.progState[pid]={block:getBlocks(pid,1)[0].idx,weekInBlock:1,cycle:1};
+  });
+  S.currentWorkout=null;
+}
+
+const P=()=>PROGRAMS[S.activeProgram];
+const PS=()=>S.progState[S.activeProgram];
+
+// Blocs visibles pour un cycle donné, avec numéros de semaines absolus
+function getBlocks(pid,cycle){
+  let start=1;const out=[];
+  PROGRAMS[pid].blocks.forEach((b,idx)=>{
+    if(b.firstCycleOnly&&cycle>1)return;
+    const weeks=(cycle>1&&b.weeksLaterCycles)||b.weeks;
+    const end=start+weeks-1;
+    const pill=`Sem. ${start}${weeks>1?'–'+end:''}${b.tag?' · '+b.tag:''}`;
+    out.push({...b,idx,weeks,start,pill,label:b.label||pill});
+    start=end+1;
+  });
+  return out;
+}
+const findBlock=(pid,cycle,idx)=>getBlocks(pid,cycle).find(b=>b.idx===idx);
+const absWeek=(pid,cycle,idx,wk)=>{const b=findBlock(pid,cycle,idx);return b?b.start+wk-1:wk;};
 
 // ═══════════════════════════════════════════
 // GOOGLE SHEETS SYNC
@@ -517,21 +700,32 @@ function syncToSheets(data){
 // ═══════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════
-const getRep=(r,i)=>{const p=r.split('-');return p.length>1&&i<p.length?p[i]:p[0];};
+const getRep=(r,i)=>{const p=String(r).split('-');return p.length>1&&i<p.length?p[i]:p[0];};
+const fmtReps=r=>/^\d/.test(r)&&!/[a-z]/i.test(r)?`${r} reps`:r;
 const countEx=s=>s.groups.reduce((n,g)=>n+g.exercises.length,0);
 const countSets=s=>s.groups.reduce((n,g)=>g.exercises.reduce((m,e)=>m+e.sets,n),0);
-const wKey=(b,w,s)=>`workout_b${b}w${w}_s${s}`;
-const dKey=(b,w,s)=>`done_b${b}w${w}_s${s}`;
+// FITMASS garde ses clés historiques (aucune perte de données) ; les autres programmes sont préfixés
+const keyPrefix=(pid,c)=>pid==='fitmass'?'':`${pid}_c${c}_`;
+const wKey=(pid,c,b,w,s)=>`${keyPrefix(pid,c)}workout_b${b}w${w}_s${s}`;
+const dKey=(pid,c,b,w,s)=>`${keyPrefix(pid,c)}done_b${b}w${w}_s${s}`;
+const progHistory=()=>(S.history||[]).map((h,i)=>({h,i})).filter(x=>x.h.programId===S.activeProgram);
+const sessOf=h=>{const b=PROGRAMS[h.programId]?.blocks[h.blockIdx];return b?b.sessions[h.sessionIdx]:null;};
+const bestSet=(d,sets)=>{if(!d)return 0;let m=0;for(let i=0;i<sets;i++){const w=parseFloat(d[`s${i}`])||0;if(w>m)m=w;}return m;};
+
+function prevKeyFor(pid,cycle,bIdx,wk,sIdx){
+  if(wk>1)return wKey(pid,cycle,bIdx,wk-1,sIdx);
+  if(cycle>1){const pb=findBlock(pid,cycle-1,bIdx);if(pb)return wKey(pid,cycle-1,bIdx,pb.weeks,sIdx);}
+  return null;
+}
 
 function getRecord(exName){
   let max=0;
-  (S.history||[]).forEach(h=>{
-    const sess=PROGRAM[h.blockIdx].sessions[h.sessionIdx];
+  progHistory().forEach(({h})=>{
+    const sess=sessOf(h);if(!sess)return;
     sess.groups.forEach((g,gi)=>g.exercises.forEach((ex,ei)=>{
       if(ex.name!==exName)return;
-      const d=S[h.storageKey]?S[h.storageKey][`g${gi}_e${ei}`]:null;
-      if(!d)return;
-      for(let i=0;i<ex.sets;i++){const w=parseFloat(d[`s${i}`])||0;if(w>max)max=w;}
+      const w=bestSet(S[h.storageKey]?S[h.storageKey][`g${gi}_e${ei}`]:null,ex.sets);
+      if(w>max)max=w;
     }));
   });
   return max;
@@ -582,40 +776,107 @@ function showPage(name,btn){
 }
 
 // ═══════════════════════════════════════════
+// SÉLECTEUR DE PROGRAMME
+// ═══════════════════════════════════════════
+function openProgramPicker(){
+  const list=document.getElementById('pv-list');
+  list.innerHTML='';
+  document.getElementById('pv-back').style.display=S.activeProgram?'flex':'none';
+  Object.entries(PROGRAMS).forEach(([pid,p])=>{
+    const st=S.progState[pid];
+    const bl=getBlocks(pid,st.cycle);
+    const totalW=bl.reduce((n,b)=>n+b.weeks,0);
+    const done=(S.history||[]).filter(h=>h.programId===pid).length;
+    const card=document.createElement('div');
+    card.className='prog-card'+(pid===S.activeProgram?' active':'');
+    card.innerHTML=`
+      <div class="prog-card-top">
+        <div class="prog-card-name">${p.name}</div>
+        ${pid===S.activeProgram?'<span class="badge" style="margin:0">Actif</span>':''}
+      </div>
+      <div class="prog-card-desc">${p.desc}</div>
+      <div class="prog-card-meta">${p.sessions||p.blocks[0].sessions.length} séances/sem · ${totalW} semaines${p.cycles?' · cycle '+st.cycle:''} · ${done} séance${done>1?'s':''} faite${done>1?'s':''}</div>`;
+    card.onclick=()=>selectProgram(pid);
+    list.appendChild(card);
+  });
+  const pv=document.getElementById('program-view');
+  pv.style.display='block';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>pv.classList.add('open')));
+}
+function closeProgramPicker(){
+  if(!S.activeProgram)return;
+  const pv=document.getElementById('program-view');
+  pv.classList.remove('open');
+  setTimeout(()=>pv.style.display='none',420);
+}
+function selectProgram(pid){
+  S.activeProgram=pid;
+  save();
+  renderHome();
+  showPage('home',document.querySelectorAll('.nav-btn')[0]);
+  closeProgramPicker();
+}
+
+// ═══════════════════════════════════════════
 // HOME
 // ═══════════════════════════════════════════
-function selectBlock(idx,el){
-  S.block=idx;
-  document.querySelectorAll('#block-pills .pill').forEach(p=>p.classList.remove('active'));
-  el.classList.add('active');
-  S.weekInBlock=1;
-  renderWeekPills();renderSessions();save();
+function renderHome(){
+  const p=P(),st=PS();
+  document.getElementById('prog-badge').textContent=p.name;
+  document.getElementById('hist-badge').textContent=p.name;
+  document.getElementById('prog-page-badge').textContent=p.name;
+  const chip=document.getElementById('cycle-chip');
+  chip.style.display=p.cycles?'inline-block':'none';
+  chip.textContent='Cycle '+st.cycle;
+  // Bloc sauvegardé invalide pour ce cycle → premier bloc visible
+  if(!findBlock(S.activeProgram,st.cycle,st.block)){st.block=getBlocks(S.activeProgram,st.cycle)[0].idx;st.weekInBlock=1;}
+  const vb=findBlock(S.activeProgram,st.cycle,st.block);
+  if(st.weekInBlock>vb.weeks)st.weekInBlock=1;
+  renderBlockPills();renderWeekPills();renderSessions();renderEndCard();
+  save();
+}
+
+function renderBlockPills(){
+  const st=PS();
+  const c=document.getElementById('block-pills');
+  c.innerHTML='';
+  getBlocks(S.activeProgram,st.cycle).forEach(b=>{
+    const el=document.createElement('div');
+    el.className='pill'+(b.idx===st.block?' active':'');
+    el.textContent=b.pill;
+    el.onclick=()=>{st.block=b.idx;st.weekInBlock=1;renderHome();};
+    c.appendChild(el);
+  });
+  const vb=findBlock(S.activeProgram,st.cycle,st.block);
+  document.getElementById('block-note').innerHTML=vb&&vb.note?`<div class="block-note">${vb.note}</div>`:'';
 }
 
 function renderWeekPills(){
-  const bloc=PROGRAM[S.block];
+  const st=PS();
+  const vb=findBlock(S.activeProgram,st.cycle,st.block);
   const c=document.getElementById('week-pills');
   c.innerHTML='';
-  for(let i=1;i<=bloc.weeks;i++){
-    const p=document.createElement('div');
-    p.className='pill'+(S.weekInBlock===i?' active':'');
-    p.textContent='Semaine '+i;
-    p.onclick=(function(w,el){return function(){
-      S.weekInBlock=w;
-      document.querySelectorAll('#week-pills .pill').forEach(p=>p.classList.remove('active'));
+  for(let i=1;i<=vb.weeks;i++){
+    const el=document.createElement('div');
+    el.className='pill'+(st.weekInBlock===i?' active':'');
+    el.textContent='Semaine '+(vb.start+i-1);
+    el.onclick=()=>{
+      st.weekInBlock=i;
+      document.querySelectorAll('#week-pills .pill').forEach(x=>x.classList.remove('active'));
       el.classList.add('active');
       renderSessions();save();
-    };})(i,p);
-    c.appendChild(p);
+    };
+    c.appendChild(el);
   }
 }
 
 function renderSessions(){
-  const bloc=PROGRAM[S.block];
+  const pid=S.activeProgram,st=PS();
+  const bloc=P().blocks[st.block];
   const c=document.getElementById('sessions-list');
   c.innerHTML='';
   bloc.sessions.forEach((s,si)=>{
-    const done=S[dKey(S.block,S.weekInBlock,si)];
+    const done=S[dKey(pid,st.cycle,st.block,st.weekInBlock,si)];
     const card=document.createElement('div');
     card.className='session-card';
     card.innerHTML=`
@@ -628,31 +889,118 @@ function renderSessions(){
         ?'<div class="session-done"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L5.5 10L11.5 4" stroke="#0a0a0a" stroke-width="1.5" stroke-linecap="round"/></svg></div>'
         :'<div class="session-arrow">›</div>'}
     `;
-    card.onclick=()=>openWorkout(S.block,si,S.weekInBlock);
+    card.onclick=()=>openWorkout(st.block,si,st.weekInBlock,st.cycle);
     c.appendChild(card);
   });
 }
 
 // ═══════════════════════════════════════════
+// FIN DE CYCLE
+// ═══════════════════════════════════════════
+function isCycleComplete(pid,cycle){
+  if(!PROGRAMS[pid].cycles)return false;
+  const bl=getBlocks(pid,cycle),last=bl[bl.length-1];
+  return PROGRAMS[pid].blocks[last.idx].sessions.every((s,si)=>S[dKey(pid,cycle,last.idx,last.weeks,si)]);
+}
+
+// Compare la meilleure charge 1re vs dernière semaine du bloc "plein volume"
+function cycleReport(pid,cycle){
+  const main=getBlocks(pid,cycle).find(b=>b.main);
+  if(!main)return null;
+  const res={};
+  PROGRAMS[pid].blocks[main.idx].sessions.forEach((s,si)=>s.groups.forEach((g,gi)=>g.exercises.forEach((ex,ei)=>{
+    const k=`g${gi}_e${ei}`;
+    const a=bestSet(S[wKey(pid,cycle,main.idx,1,si)]?.[k],ex.sets);
+    const b=bestSet(S[wKey(pid,cycle,main.idx,main.weeks,si)]?.[k],ex.sets);
+    if(!a||!b)return;
+    res[ex.name]=res[ex.name]||b>a;
+  })));
+  const names=Object.keys(res);
+  return {up:names.filter(n=>res[n]),flat:names.filter(n=>!res[n]),total:names.length,
+    w1:main.start,w2:main.start+main.weeks-1};
+}
+
+function renderEndCard(){
+  const slot=document.getElementById('end-card-slot');
+  const pid=S.activeProgram,c=PS().cycle;
+  if(!isCycleComplete(pid,c)){slot.innerHTML='';return;}
+  slot.innerHTML=`<div class="end-card" onclick="openCycleModal()">
+    <div class="end-card-title">Cycle ${c} terminé ✓</div>
+    <div class="end-card-sub">Deload fini. Touche ici pour voir ton bilan et quoi faire pour la suite.</div>
+  </div>`;
+}
+
+function openCycleModal(){
+  const pid=S.activeProgram,c=PS().cycle;
+  const r=cycleReport(pid,c);
+  const prev=c>1?cycleReport(pid,c-1):null;
+  const stuck=r&&prev?r.flat.filter(n=>prev.flat.includes(n)):[];
+  const chips=(arr,cls='')=>`<div class="ex-chips">${arr.map(n=>`<span class="ex-chip ${cls}">${n}</span>`).join('')}</div>`;
+  let verdict;
+  if(!r||!r.total){
+    verdict=`<div class="verdict"><div class="verdict-title">Bilan manuel</div>
+      Pas assez de charges saisies en semaines ${r?r.w1+' et '+r.w2:'du bloc principal'} pour une analyse automatique.
+      Regarde l'onglet Progression : charges ou reps en hausse sur la majorité des exercices = progression bonne.</div>`;
+  }else{
+    const ratio=r.up.length/r.total;
+    const good=ratio>=0.6;
+    verdict=`<div class="verdict ${good?'good':'warn'}">
+      <div class="verdict-title">${good?'Progression bonne → continue':'Progression limitée'}</div>
+      Charge en hausse entre la semaine ${r.w1} et la semaine ${r.w2} sur <b style="color:var(--text)">${r.up.length}/${r.total}</b> exercices.
+      ${good?'Tu peux relancer un cycle tel quel.':'Lis les pistes ci-dessous avant de relancer.'}
+      ${r.flat.length?`<div style="margin-top:8px">Sans hausse de charge :</div>${chips(r.flat.filter(n=>!stuck.includes(n)))}`:''}
+      ${stuck.length?`<div style="margin-top:8px;color:var(--red)">Bloqués 2 cycles d'affilée → à remplacer :</div>${chips(stuck,'stuck')}`:''}
+      <div style="margin-top:8px;font-size:11px;color:var(--text3)">L'app ne suit que les charges : une charge identique avec plus de reps compte aussi comme une progression.</div>
+    </div>`;
+  }
+  document.getElementById('cycle-title').textContent=`Cycle ${c} terminé`;
+  document.getElementById('cycle-body').innerHTML=verdict+`
+    <div class="guide-item"><b>✅ Progression bonne → continue</b>
+      Lance le cycle suivant. Plus de rampe : 4 semaines de plein volume puis 1 semaine de deload.
+      Repars avec tes charges de la dernière semaine de plein volume (−2,5 à 5 % si tu étais à la limite).</div>
+    <div class="guide-item"><b>⚠️ Quelques exercices bloqués</b>
+      Un exercice sans progrès sur 2 cycles d'affilée → remplace-le par une variante proche
+      (ex. couché barre → couché haltères, squat → hack squat). Garde tout le reste.</div>
+    <div class="guide-item"><b>🛑 Stagnation générale ou fatigue</b>
+      Vérifie d'abord sommeil, calories (déficit léger, ~300 kcal max) et protéines (1,8–2,2 g/kg).
+      Si tout est ok, prolonge le deload d'une semaine avant de relancer.</div>
+    <div class="guide-item"><b>🔄 Après 4–6 mois sur ce programme</b>
+      Change de structure (autre split ou autre focus) pour relancer la progression.</div>`;
+  showModal('cycle');
+}
+
+function startNextCycle(){
+  const st=PS();
+  st.cycle++;
+  st.block=getBlocks(S.activeProgram,st.cycle)[0].idx;
+  st.weekInBlock=1;
+  save();
+  hideModal('cycle');
+  renderHome();
+}
+
+// ═══════════════════════════════════════════
 // WORKOUT
 // ═══════════════════════════════════════════
-function openWorkout(bIdx,sIdx,wk){
-  const bloc=PROGRAM[bIdx], s=bloc.sessions[sIdx];
-  const sk=wKey(bIdx,wk,sIdx);
-  S.currentWorkout={blockIdx:bIdx,sessionIdx:sIdx,week:wk,storageKey:sk};
+function openWorkout(bIdx,sIdx,wk,cycle){
+  const pid=S.activeProgram;
+  const vb=findBlock(pid,cycle,bIdx);
+  const s=P().blocks[bIdx].sessions[sIdx];
+  const sk=wKey(pid,cycle,bIdx,wk,sIdx);
+  const prevSk=prevKeyFor(pid,cycle,bIdx,wk,sIdx);
+  S.currentWorkout={programId:pid,cycle,blockIdx:bIdx,sessionIdx:sIdx,week:wk,storageKey:sk,prevKey:prevSk};
 
   document.getElementById('wv-title').textContent=`Séance ${s.num} — ${s.name}`;
-  document.getElementById('wv-sub').textContent=`${bloc.label} · Semaine ${wk}`;
+  document.getElementById('wv-sub').textContent=`${P().name}${P().cycles?' · Cycle '+cycle:''} · ${vb?vb.label:''} · Semaine ${absWeek(pid,cycle,bIdx,wk)}`;
 
   const content=document.getElementById('wv-content');
   content.innerHTML='';
   const saved=S[sk]||{};
-  const prevSk=wk>1?wKey(bIdx,wk-1,sIdx):null;
 
   s.groups.forEach((g,gi)=>{
     const rs=document.createElement('div');
     rs.className='rest-section';
-    rs.innerHTML=`<span class="rest-label">Repos ${g.rest}s entre les séries</span><button class="rest-btn" onclick="startTimer(${g.rest})">⏱ Démarrer</button>`;
+    rs.innerHTML=`<span class="rest-label">${g.superset?'<span class="superset-tag">Superset</span>':''}Repos ${g.rest}s${g.superset?' après le duo':' entre les séries'}</span><button class="rest-btn" onclick="startTimer(${g.rest})">⏱ Démarrer</button>`;
     content.appendChild(rs);
 
     g.exercises.forEach((ex,ei)=>{
@@ -668,7 +1016,8 @@ function openWorkout(bIdx,sIdx,wk){
           <div class="ex-name">${ex.name}</div>
           ${ex.note?`<div class="ex-note">${ex.note}</div>`:''}
           <div class="ex-tags">
-            <span class="ex-tag tempo">Tempo ${ex.tempo}</span>
+            ${ex.tempo?`<span class="ex-tag tempo">Tempo ${ex.tempo}</span>`:''}
+            ${ex.rpe?`<span class="ex-tag rpe">RPE ${ex.rpe}</span>`:''}
             <span class="ex-tag rest">Repos ${g.rest}s</span>
           </div>
         </div>
@@ -691,15 +1040,15 @@ function openWorkout(bIdx,sIdx,wk){
         row.innerHTML=`
           <div class="series-num">${i+1}</div>
           <div>
-            <div style="font-size:13px;color:var(--text);font-weight:500;">${getRep(ex.reps,i)} reps${isPR?'<span class="pr-badge">🏆 PR</span>':''}</div>
-            ${pw?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">Sem.préc: ${pw}kg</div>`:''}
+            <div style="font-size:13px;color:var(--text);font-weight:500;">${fmtReps(getRep(ex.reps,i))}${isPR?'<span class="pr-badge">🏆 PR</span>':''}</div>
+            ${pw?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">Préc: ${pw}kg</div>`:''}
           </div>
           <input class="w-input${cls}" type="number" inputmode="decimal"
             placeholder="${pw?pw+'kg':'kg'}" value="${sw}"
-            data-ex="${exKey}" data-s="${sk2}" data-bi="${bIdx}" data-si="${sIdx}" data-wk="${wk}"
+            data-ex="${exKey}" data-s="${sk2}"
             oninput="onWeightInput(this)" step="0.5" min="0">
           <button class="done-btn${isDone?' active':''}"
-            data-ex="${exKey}" data-s="${sk2}" data-bi="${bIdx}" data-si="${sIdx}" data-wk="${wk}"
+            data-ex="${exKey}" data-s="${sk2}"
             onclick="onDoneClick(this)">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M3 8L6.5 11.5L13 4.5" stroke="${isDone?'#0a0a0a':'currentColor'}" stroke-width="1.5" stroke-linecap="round"/>
@@ -728,17 +1077,19 @@ function openWorkout(bIdx,sIdx,wk){
     const btn=document.createElement('button');
     btn.className='rpe-btn'+(savedRpe===r?' selected':'');
     btn.textContent=r;
-    btn.onclick=(function(rpe){return function(){
+    btn.onclick=function(){
       document.querySelectorAll('.rpe-btn').forEach(b=>b.classList.remove('selected'));
       this.classList.add('selected');
-      if(!S[S.currentWorkout.storageKey])S[S.currentWorkout.storageKey]={};
-      S[S.currentWorkout.storageKey].rpe=rpe;
+      const key=S.currentWorkout.storageKey;
+      if(!S[key])S[key]={};
+      S[key].rpe=r;
       save();
-    };})(r);
+    };
     rpeRow.appendChild(btn);
   }
 
   const wv=document.getElementById('workout-view');
+  wv.scrollTop=0;
   wv.style.display='block';
   requestAnimationFrame(()=>requestAnimationFrame(()=>wv.classList.add('open')));
   document.getElementById('finish-bar').classList.add('show');
@@ -746,15 +1097,15 @@ function openWorkout(bIdx,sIdx,wk){
 }
 
 function onWeightInput(input){
-  const{ex,s:sk2,bi,si,wk}=input.dataset;
-  const key=wKey(bi,wk,si);
+  const cw=S.currentWorkout;if(!cw)return;
+  const{ex,s:sk2}=input.dataset;
+  const key=cw.storageKey;
   if(!S[key])S[key]={};
   if(!S[key][ex])S[key][ex]={};
   S[key][ex][sk2]=input.value;
   save();
-  // Color
-  const prevSk=wk>1?wKey(bi,wk-1,si):null;
-  const pd=prevSk&&S[prevSk]?S[prevSk][ex]:null;
+  // Couleur vs référence précédente
+  const pd=cw.prevKey&&S[cw.prevKey]?S[cw.prevKey][ex]:null;
   const pw=pd&&pd[sk2]?parseFloat(pd[sk2]):null;
   const val=parseFloat(input.value);
   input.className='w-input';
@@ -769,8 +1120,9 @@ function onWeightInput(input){
 }
 
 function onDoneClick(btn){
-  const{ex,s:sk2,bi,si,wk}=btn.dataset;
-  const key=wKey(bi,wk,si);
+  const cw=S.currentWorkout;if(!cw)return;
+  const{ex,s:sk2}=btn.dataset;
+  const key=cw.storageKey;
   if(!S[key])S[key]={};
   if(!S[key][ex])S[key][ex]={};
   const dk=`done_${sk2}`;
@@ -780,12 +1132,16 @@ function onDoneClick(btn){
   btn.querySelector('path')?.setAttribute('stroke',now?'#0a0a0a':'currentColor');
   save();
   if(now){
-    const bloc=PROGRAM[+bi], sess=bloc.sessions[+si];
+    const prog=PROGRAMS[cw.programId];
+    const vb=findBlock(cw.programId,cw.cycle,cw.blockIdx);
+    const sess=prog.blocks[cw.blockIdx].sessions[cw.sessionIdx];
     const serieIdx=parseInt(sk2.replace('s',''));
-    const weight=S[key][ex]?S[key][ex][sk2]||'':'';
+    const weight=S[key][ex][sk2]||'';
     let exName='';
     sess.groups.forEach((g,gi)=>g.exercises.forEach((e,ei)=>{if(`g${gi}_e${ei}`===ex)exName=e.name;}));
-    syncToSheets({date:new Date().toISOString(),bloc:bloc.label,semaine:+wk,seance:`S${sess.num} ${sess.name}`,exercice:exName,serie:serieIdx+1,poids:weight||'',fait:1});
+    syncToSheets({date:new Date().toISOString(),programme:prog.name,cycle:cw.cycle,bloc:vb?vb.label:'',
+      semaine:absWeek(cw.programId,cw.cycle,cw.blockIdx,cw.week),seance:`S${sess.num} ${sess.name}`,
+      exercice:exName,serie:serieIdx+1,poids:weight,fait:1});
   }
 }
 
@@ -797,20 +1153,27 @@ function closeWorkout(){
   setTimeout(()=>wv.style.display='none',420);
   S.currentWorkout=null;
   renderSessions();
+  renderEndCard();
 }
 
 function confirmFinish(){
   hideModal('finish');
   const cw=S.currentWorkout;
   if(!cw)return;
-  S[dKey(cw.blockIdx,cw.week,cw.sessionIdx)]=true;
-  const bloc=PROGRAM[cw.blockIdx], s=bloc.sessions[cw.sessionIdx];
-  const entry={date:new Date().toISOString(),blockIdx:cw.blockIdx,sessionIdx:cw.sessionIdx,week:cw.week,name:`${bloc.label} · S${s.num} ${s.name}`,storageKey:cw.storageKey};
-  if(!S.history)S.history=[];
-  const ei=S.history.findIndex(h=>h.blockIdx===cw.blockIdx&&h.sessionIdx===cw.sessionIdx&&h.week===cw.week);
+  const wasComplete=isCycleComplete(cw.programId,cw.cycle);
+  S[dKey(cw.programId,cw.cycle,cw.blockIdx,cw.week,cw.sessionIdx)]=true;
+  const prog=PROGRAMS[cw.programId];
+  const vb=findBlock(cw.programId,cw.cycle,cw.blockIdx);
+  const s=prog.blocks[cw.blockIdx].sessions[cw.sessionIdx];
+  const entry={date:new Date().toISOString(),programId:cw.programId,cycle:cw.cycle,blockIdx:cw.blockIdx,
+    sessionIdx:cw.sessionIdx,week:cw.week,name:`${prog.cycles?'Cycle '+cw.cycle+' · ':''}${vb?vb.label:''} · S${s.num} ${s.name}`,
+    storageKey:cw.storageKey};
+  const ei=S.history.findIndex(h=>h.programId===cw.programId&&h.cycle===cw.cycle&&h.blockIdx===cw.blockIdx&&h.sessionIdx===cw.sessionIdx&&h.week===cw.week);
   if(ei>=0)S.history[ei]=entry; else S.history.unshift(entry);
   save();
+  const justCompleted=!wasComplete&&cw.cycle===PS().cycle&&isCycleComplete(cw.programId,cw.cycle);
   closeWorkout();
+  if(justCompleted)setTimeout(openCycleModal,500);
 }
 
 // ═══════════════════════════════════════════
@@ -843,15 +1206,17 @@ let pendingReopenIdx=null;
 function renderHistory(){
   const c=document.getElementById('history-list');
   c.innerHTML='';
-  if(!S.history||!S.history.length){
-    c.innerHTML='<div class="empty-state"><div class="empty-icon">🏋️</div><div class="empty-text">Aucune séance terminée</div></div>';
+  const items=progHistory();
+  if(!items.length){
+    c.innerHTML='<div class="empty-state"><div class="empty-icon">🏋️</div><div class="empty-text">Aucune séance terminée sur ce programme</div></div>';
     return;
   }
-  S.history.forEach((entry,idx)=>{
+  items.forEach(({h:entry,i:idx})=>{
     const d=new Date(entry.date);
     const dateStr=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
     const timeStr=d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
     const vol=calcVolume(entry);
+    const cyc=PROGRAMS[entry.programId].cycles;
 
     const wrap=document.createElement('div');
     wrap.className='hist-wrap';
@@ -859,10 +1224,10 @@ function renderHistory(){
     const circle=document.createElement('div');
     circle.className='hist-delete-circle';
     circle.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
-    circle.addEventListener('touchend',(function(i){return function(e){
+    circle.addEventListener('touchend',function(e){
       e.stopPropagation();e.preventDefault();
-      pendingDeleteIdx=i;showModal('delete');
-    };})(idx));
+      pendingDeleteIdx=idx;showModal('delete');
+    });
 
     const card=document.createElement('div');
     card.className='hist-card';
@@ -871,7 +1236,8 @@ function renderHistory(){
       <div class="hist-name">${entry.name}</div>
       <div class="hist-stats">
         <div class="hist-stat">Volume: <span>${vol>0?vol+'kg':'—'}</span></div>
-        <div class="hist-stat">Semaine: <span>${entry.week}</span></div>
+        ${cyc?`<div class="hist-stat">Cycle: <span>${entry.cycle}</span></div>`:''}
+        <div class="hist-stat">Semaine: <span>${absWeek(entry.programId,entry.cycle,entry.blockIdx,entry.week)}</span></div>
       </div>
       <button class="hist-reopen" onclick="pendingReopenIdx=${idx};showModal('reopen')">Rouvrir la séance</button>
     `;
@@ -894,45 +1260,45 @@ function renderHistory(){
     wrap.appendChild(card);
     c.appendChild(wrap);
   });
-
-  document.addEventListener('touchstart',function(e){
-    if(activeSwipe&&!activeSwipe.contains(e.target)){
-      setTimeout(()=>{
-        if(activeSwipe){
-          activeSwipe.style.transform='translateX(0)';
-          activeSwipe.querySelector('.hist-delete-circle')?.classList.remove('visible');
-          activeSwipe=null;
-        }
-      },150);
-    }
-  },{passive:true});
 }
+
+document.addEventListener('touchstart',function(e){
+  if(activeSwipe&&!activeSwipe.contains(e.target)){
+    setTimeout(()=>{
+      if(activeSwipe){
+        activeSwipe.style.transform='translateX(0)';
+        activeSwipe.querySelector('.hist-delete-circle')?.classList.remove('visible');
+        activeSwipe=null;
+      }
+    },150);
+  }
+},{passive:true});
 
 function confirmDelete(){
   if(pendingDeleteIdx===null)return;
-  const entry=S.history[pendingDeleteIdx];
-  delete S[dKey(entry.blockIdx,entry.week,entry.sessionIdx)];
+  const e=S.history[pendingDeleteIdx];
+  delete S[dKey(e.programId,e.cycle,e.blockIdx,e.week,e.sessionIdx)];
   S.history.splice(pendingDeleteIdx,1);
   pendingDeleteIdx=null;
   save();
   hideModal('delete');
-  setTimeout(()=>{renderHistory();renderSessions();},420);
+  setTimeout(()=>{renderHistory();renderSessions();renderEndCard();},420);
 }
 
 function confirmReopen(){
   if(pendingReopenIdx===null)return;
-  const entry=S.history[pendingReopenIdx];
+  const e=S.history[pendingReopenIdx];
   S.history.splice(pendingReopenIdx,1);
-  delete S[dKey(entry.blockIdx,entry.week,entry.sessionIdx)];
+  delete S[dKey(e.programId,e.cycle,e.blockIdx,e.week,e.sessionIdx)];
   pendingReopenIdx=null;
   save();
   hideModal('reopen');
   setTimeout(()=>{
+    const st=PS();
+    if(e.cycle===st.cycle){st.block=e.blockIdx;st.weekInBlock=e.week;}
     showPage('home',document.querySelectorAll('.nav-btn')[0]);
-    S.block=entry.blockIdx;S.weekInBlock=entry.week;
-    document.querySelectorAll('#block-pills .pill').forEach((p,i)=>p.classList.toggle('active',i===entry.blockIdx));
-    renderWeekPills();renderSessions();
-    setTimeout(()=>openWorkout(entry.blockIdx,entry.sessionIdx,entry.week),400);
+    renderHome();
+    setTimeout(()=>openWorkout(e.blockIdx,e.sessionIdx,e.week,e.cycle),400);
   },420);
 }
 
@@ -942,14 +1308,10 @@ function confirmReopen(){
 let chartInst=null;
 
 function buildExList(blockIdx){
-  if(blockIdx===undefined){
-    const all=new Set();
-    PROGRAM.forEach(b=>b.sessions.forEach(s=>s.groups.forEach(g=>g.exercises.forEach(e=>all.add(e.name)))));
-    return [...all].sort();
-  }
   const seen=new Set();
-  PROGRAM[blockIdx].sessions.forEach(s=>s.groups.forEach(g=>g.exercises.forEach(e=>{if(!seen.has(e.name))seen.add(e.name);})));
-  return [...seen];
+  const blocks=blockIdx===undefined?P().blocks:[P().blocks[blockIdx]];
+  blocks.forEach(b=>b.sessions.forEach(s=>s.groups.forEach(g=>g.exercises.forEach(e=>seen.add(e.name)))));
+  return blockIdx===undefined?[...seen].sort():[...seen];
 }
 
 function switchProgView(view,el){
@@ -972,7 +1334,7 @@ function renderProgressPage(){
   document.getElementById('prog-all').style.display=view==='all'?'block':'none';
 
   const selB=document.getElementById('sel-bloc');
-  const bEx=buildExList(S.block);
+  const bEx=buildExList(PS().block);
   selB.innerHTML=bEx.map(e=>`<option value="${e}">${e}</option>`).join('');
   if(S.progExBloc&&bEx.includes(S.progExBloc))selB.value=S.progExBloc;
 
@@ -989,30 +1351,30 @@ function renderChart(){
   const exName=view==='bloc'
     ?document.getElementById('sel-bloc').value
     :document.getElementById('sel-all').value;
-  if(!exName)return;
+  if(!exName){renderEmptyChart();return;}
 
   document.getElementById('chart-wrap').style.display='block';
   const dataPoints=[];
 
-  if(S.history&&S.history.length){
-    [...S.history].reverse().forEach(entry=>{
-      const sess=PROGRAM[entry.blockIdx].sessions[entry.sessionIdx];
-      let found=null;
-      sess.groups.forEach((g,gi)=>g.exercises.forEach((ex,ei)=>{
-        if(ex.name!==exName)return;
-        const d=S[entry.storageKey]?S[entry.storageKey][`g${gi}_e${ei}`]:null;
-        if(!d)return;
-        const ws=[];
-        for(let i=0;i<ex.sets;i++){const w=parseFloat(d[`s${i}`])||0;if(w>0)ws.push(w);}
-        if(ws.length)found={
-          date:entry.date,
-          label:new Date(entry.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
-          max:Math.max(...ws),avg:ws.reduce((a,b)=>a+b,0)/ws.length,weights:ws,week:entry.week
-        };
-      }));
-      if(found)dataPoints.push(found);
-    });
-  }
+  [...progHistory()].reverse().forEach(({h:entry})=>{
+    const sess=sessOf(entry);if(!sess)return;
+    let found=null;
+    sess.groups.forEach((g,gi)=>g.exercises.forEach((ex,ei)=>{
+      if(ex.name!==exName)return;
+      const d=S[entry.storageKey]?S[entry.storageKey][`g${gi}_e${ei}`]:null;
+      if(!d)return;
+      const ws=[];
+      for(let i=0;i<ex.sets;i++){const w=parseFloat(d[`s${i}`])||0;if(w>0)ws.push(w);}
+      if(ws.length)found={
+        date:entry.date,
+        label:new Date(entry.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}),
+        max:Math.max(...ws),avg:ws.reduce((a,b)=>a+b,0)/ws.length,weights:ws,
+        week:absWeek(entry.programId,entry.cycle,entry.blockIdx,entry.week),
+        cycle:PROGRAMS[entry.programId].cycles?entry.cycle:null
+      };
+    }));
+    if(found)dataPoints.push(found);
+  });
 
   if(!dataPoints.length){renderEmptyChart();return;}
 
@@ -1028,6 +1390,7 @@ function renderChart(){
 
   document.querySelector('.chart-wrap .empty-chart-text')?.remove();
   if(chartInst){chartInst.destroy();chartInst=null;}
+  if(typeof Chart==='undefined')return;
   chartInst=new Chart(document.getElementById('chart').getContext('2d'),{
     type:'line',
     data:{
@@ -1051,7 +1414,7 @@ function renderChart(){
     const ds=new Date(d.date).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
     div.innerHTML=`
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:12px;color:var(--text2);">${ds} · Sem.${d.week}</span>
+        <span style="font-size:12px;color:var(--text2);">${ds} · ${d.cycle?'C'+d.cycle+' · ':''}Sem.${d.week}</span>
         <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);">${d.max}kg max</span>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
@@ -1081,9 +1444,11 @@ function renderEmptyChart(){
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
-document.querySelectorAll('#block-pills .pill').forEach((p,i)=>p.classList.toggle('active',i===S.block));
-renderWeekPills();
-renderSessions();
+load();
+migrate();
+save();
+if(S.activeProgram)renderHome();
+else openProgramPicker();
 document.body.addEventListener('touchstart',e=>{if(document.body.scrollTop===0)document.body.scrollTop=1;},{passive:true});
 </script>
 </body>
