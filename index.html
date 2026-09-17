@@ -212,6 +212,18 @@ canvas{width:100%!important;max-height:200px;}
 .ex-chip{font-size:11px;padding:3px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--border2);color:var(--text2);}
 .ex-chip.stuck{border-color:#ff5f5f80;color:var(--red);}
 
+/* ─── SYNCHRO ─── */
+.title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.sync-pill{margin-top:4px;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;}
+.sync-pill i{width:7px;height:7px;border-radius:50%;background:var(--text3);}
+.sync-pill.ok i{background:var(--teal);}
+.sync-pill.pending i,.sync-pill.busy i{background:var(--amber);}
+.sync-pill.busy i{animation:syncBlink 1s ease-in-out infinite;}
+.sync-pill.offline i,.sync-pill.error i{background:var(--red);}
+@keyframes syncBlink{50%{opacity:.25}}
+.sync-link{margin-top:12px;background:none;border:none;padding:0;color:var(--accent);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;text-align:left;}
+.sync-input{text-align:left!important;margin-bottom:14px;font-size:16px!important;}
+
 /* ─── REPOS RATTACHÉ AUX EXERCICES ─── */
 .done-btn{color:var(--text3);} /* évite la coche bleue par défaut d'iOS */
 .ex-header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
@@ -313,6 +325,18 @@ canvas{width:100%!important;max-height:200px;}
   </div>
 </div>
 
+<!-- MODAL: SYNCHRO -->
+<div id="modal-sync" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title">Synchronisation</div>
+    <div class="modal-sub" id="sync-msg"></div>
+    <div class="modal-btns col">
+      <button class="modal-confirm green" onclick="syncNow()">Synchroniser maintenant</button>
+      <button class="modal-cancel" onclick="hideModal('sync')">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: FIN DE CYCLE -->
 <div id="modal-cycle" class="modal-overlay">
   <div class="modal-box tall">
@@ -334,7 +358,10 @@ canvas{width:100%!important;max-height:200px;}
       <span class="cycle-chip" id="cycle-chip" style="display:none"></span>
       <button class="switch-btn" onclick="openProgramPicker()">Changer ↻</button>
     </div>
-    <div class="page-title syne">FITMASS<br>Tracker</div>
+    <div class="title-row">
+      <div class="page-title syne">FITMASS<br>Tracker</div>
+      <button class="sync-pill pending" id="sync-pill" onclick="openSyncModal()"><i></i><span>En attente</span></button>
+    </div>
     <div class="page-sub" id="home-sub">Choisis ton bloc de semaines</div>
   </div>
   <div id="end-card-slot"></div>
@@ -671,7 +698,12 @@ const PROGRAMS={
 // ═══════════════════════════════════════════
 const STORE_KEY='fitmass_v2';
 let S={activeProgram:null,progState:{},history:[],currentWorkout:null};
-const save=()=>{try{localStorage.setItem(STORE_KEY,JSON.stringify(S));}catch(e){}};
+// save() = modification utilisateur (horodatée + envoyée au Sheet) ; save(false) = simple écriture locale
+const save=(bump=true)=>{
+  if(bump){S.updatedAt=Date.now();SM.dirty=true;saveMeta();}
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(S));}catch(e){}
+  if(bump)schedulePush();
+};
 const load=()=>{try{const d=localStorage.getItem(STORE_KEY);if(d)S=JSON.parse(d);}catch(e){}};
 
 // Migration des données existantes (ancienne version mono-programme = FITMASS)
@@ -710,13 +742,139 @@ const findBlock=(pid,cycle,idx)=>getBlocks(pid,cycle).find(b=>b.idx===idx);
 const absWeek=(pid,cycle,idx,wk)=>{const b=findBlock(pid,cycle,idx);return b?b.start+wk-1:wk;};
 
 // ═══════════════════════════════════════════
-// GOOGLE SHEETS SYNC
+// GOOGLE SHEETS — JOURNAL + SYNCHRO DE L'ÉTAT
 // ═══════════════════════════════════════════
 const SHEETS_URL='https://script.google.com/macros/s/AKfycbyAnRKartabOvH0mHADFyoNdWgQazp8U6lK9zrnBo8-wC6FB4yXrdpSjUACB5OdIs1G/exec';
+const META_STORE='fitmass_sync_meta'; // {base: version distante de référence, dirty: modifs non envoyées}
+const lsGet=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
+let SM={};try{SM=JSON.parse(lsGet(META_STORE)||'{}')||{};}catch(e){SM={};}
+const saveMeta=()=>lsSet(META_STORE,JSON.stringify(SM));
+
+// Journal des séries (1 ligne par série) — envoi sans attendre de réponse
 function syncToSheets(data){
-  fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+  fetch(SHEETS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(data)})
     .catch(e=>console.log('Sync error:',e));
 }
+
+// Requête dont on lit la réponse (Apps Script renvoie les en-têtes CORS après redirection)
+async function sheetsCall(method,payload){
+  const opts=method==='GET'
+    ?{method:'GET'}
+    :{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)};
+  const url=method==='GET'?`${SHEETS_URL}?action=state&t=${Date.now()}`:SHEETS_URL;
+  const r=await fetch(url,{...opts,redirect:'follow'});
+  return r.json();
+}
+
+let syncStatus='pending',hydrated=false,syncBusy=false,pushTimer=null;
+const hasData=s=>!!(s&&((s.history&&s.history.length)||Object.keys(s).some(k=>k.includes('workout_b'))));
+const stateForSync=()=>{const c={...S};delete c.currentWorkout;return c;};
+// JSON en ASCII pur : aucun caractère spécial ne peut être abîmé par le Sheet
+const asciiJson=o=>JSON.stringify(o).replace(/[\u007f-\uffff]/g,c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0'));
+
+function setSyncStatus(st,msg){
+  syncStatus=st;
+  const el=document.getElementById('sync-pill');
+  if(el){
+    el.className='sync-pill '+st;
+    el.querySelector('span').textContent={ok:'Synchro',pending:'En attente',busy:'Synchro…',offline:'Hors ligne',error:'Erreur'}[st]||st;
+  }
+  const m=document.getElementById('sync-msg');
+  if(m)m.textContent=msg||{ok:'Tout est synchronisé avec ton Google Sheet.',pending:'Des modifications attendent d\'être envoyées.',
+    busy:'Synchronisation en cours…',offline:'Pas de connexion : les modifications seront envoyées dès que le réseau revient.',
+    error:'Le Sheet n\'a pas répondu. Nouvel essai automatique plus tard.'}[st]||'';
+}
+
+function schedulePush(){
+  setSyncStatus('pending');
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(()=>hydrated?pushState():pullState(),2500);
+}
+
+function applyRemote(remote,updatedAt){
+  const keepUi={progView:S.progView,progExBloc:S.progExBloc,progExAll:S.progExAll};
+  S={...remote,...keepUi,currentWorkout:null,updatedAt};
+  migrate();
+  save(false);
+  SM.base=updatedAt;SM.dirty=false;saveMeta();
+  if(S.activeProgram){
+    document.getElementById('program-view').classList.contains('open')&&closeProgramPicker();
+    renderHome();
+    if(document.getElementById('page-history').classList.contains('active'))renderHistory();
+    if(document.getElementById('page-progress').classList.contains('active'))renderProgressPage();
+  }else openProgramPicker();
+}
+
+async function pullState(){
+  if(syncBusy)return;
+  if(!navigator.onLine){setSyncStatus('offline');return;}
+  // Pas de remplacement de l'état pendant une séance ouverte : on réessaiera à la fermeture
+  if(S.currentWorkout){setSyncStatus(SM.dirty?'pending':syncStatus);return;}
+  syncBusy=true;setSyncStatus('busy');
+  try{
+    const res=await sheetsCall('GET');
+    if(res.status!=='ok')throw new Error(res.message||res.status);
+    hydrated=true;
+    const r=Number(res.updatedAt)||0;
+    const remote=res.state?JSON.parse(res.state):null;
+    const localTs=S.updatedAt||0;
+    if(!remote||!r){                                   // Sheet vide → on envoie ce qu'on a
+      syncBusy=false;
+      if(hasData(S)||SM.dirty)return await pushState(true);
+      setSyncStatus('ok');return;
+    }
+    if(SM.base===undefined){                           // 1re synchro sur cet appareil
+      if(!hasData(S)||r>=localTs)applyRemote(remote,r);
+      else{syncBusy=false;return await pushState(true);}
+    }else if(r>SM.base){                               // le Sheet a changé depuis la dernière synchro
+      if(!SM.dirty||r>=localTs)applyRemote(remote,r);
+      else{syncBusy=false;return await pushState(true);}
+    }else if(SM.dirty){syncBusy=false;return await pushState(true);}
+    setSyncStatus('ok');
+  }catch(e){
+    console.log('Pull error:',e);
+    setSyncStatus(navigator.onLine?'error':'offline');
+  }finally{syncBusy=false;}
+}
+
+async function pushState(force){
+  if(!hydrated&&!force)return pullState();
+  if(syncBusy){schedulePush();return;}
+  if(!navigator.onLine){setSyncStatus('offline');return;}
+  syncBusy=true;setSyncStatus('busy');
+  const ts=S.updatedAt||Date.now();
+  if(!S.updatedAt){S.updatedAt=ts;save(false);}
+  try{
+    const res=await sheetsCall('POST',{type:'state',updatedAt:ts,state:asciiJson(stateForSync())});
+    if(res.status==='stale'){hydrated=false;syncBusy=false;return await pullState();} // une version plus récente existe
+    if(res.status!=='ok')throw new Error(res.message||res.status);
+    SM.base=ts;
+    if((S.updatedAt||0)===ts)SM.dirty=false;       // rien n'a changé pendant l'envoi
+    saveMeta();
+    setSyncStatus(SM.dirty?'pending':'ok');
+    if(SM.dirty)schedulePush();
+  }catch(e){
+    console.log('Push error:',e);
+    setSyncStatus(navigator.onLine?'error':'offline');
+    clearTimeout(pushTimer);pushTimer=setTimeout(pushState,30000);
+  }finally{syncBusy=false;}
+}
+
+// ─── Fenêtre de réglages ───
+function openSyncModal(){setSyncStatus(syncStatus);showModal('sync');}
+function syncNow(){hydrated=false;pullState();}
+
+window.addEventListener('online',()=>{hydrated=false;pullState();});
+window.addEventListener('offline',()=>setSyncStatus('offline'));
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){hydrated=false;pullState();}
+  else if(SM.dirty&&hydrated){                     // l'app passe en arrière-plan → envoi immédiat
+    clearTimeout(pushTimer);
+    fetch(SHEETS_URL,{method:'POST',mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({type:'state',updatedAt:S.updatedAt,state:asciiJson(stateForSync())})}).catch(()=>{});
+  }
+});
 
 // Une série = une seule ligne dans le Sheet, identifiée par un ID unique.
 // Cochée → ligne créée ou mise à jour ; décochée → ligne supprimée.
@@ -875,7 +1033,7 @@ function renderHome(){
   const vb=findBlock(S.activeProgram,st.cycle,st.block);
   if(st.weekInBlock>vb.weeks)st.weekInBlock=1;
   renderBlockPills();renderWeekPills();renderSessions();renderEndCard();
-  save();
+  save(false);
 }
 
 function renderBlockPills(){
@@ -886,7 +1044,7 @@ function renderBlockPills(){
     const el=document.createElement('div');
     el.className='pill'+(b.idx===st.block?' active':'');
     el.textContent=b.pill;
-    el.onclick=()=>{st.block=b.idx;st.weekInBlock=1;renderHome();};
+    el.onclick=()=>{st.block=b.idx;st.weekInBlock=1;save();renderHome();};
     c.appendChild(el);
   });
   const vb=findBlock(S.activeProgram,st.cycle,st.block);
@@ -1222,6 +1380,7 @@ function closeWorkout(){
   S.currentWorkout=null;
   renderSessions();
   renderEndCard();
+  if(!hydrated)setTimeout(pullState,450);
 }
 
 function confirmFinish(){
@@ -1514,9 +1673,11 @@ function renderEmptyChart(){
 // ═══════════════════════════════════════════
 load();
 migrate();
-save();
+save(false);
 if(S.activeProgram)renderHome();
 else openProgramPicker();
+setSyncStatus('pending');
+pullState();
 document.body.addEventListener('touchstart',e=>{if(document.body.scrollTop===0)document.body.scrollTop=1;},{passive:true});
 </script>
 </body>
