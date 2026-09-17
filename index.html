@@ -206,6 +206,22 @@ canvas{width:100%!important;max-height:200px;}
 .ex-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
 .ex-chip{font-size:11px;padding:3px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--border2);color:var(--text2);}
 .ex-chip.stuck{border-color:#ff5f5f80;color:var(--red);}
+
+/* ─── REPOS RATTACHÉ AUX EXERCICES ─── */
+.done-btn{color:var(--text3);} /* évite la coche bleue par défaut d'iOS */
+.ex-header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.rest-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;}
+.rest-col .rest-btn{padding:6px 12px;font-size:12px;}
+.rest-cap{font-family:'Syne',sans-serif;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);}
+.group-card{margin:0 16px 16px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg3);padding-bottom:1px;animation:cardIn .38s var(--ease) both;}
+.group-card.superset{border-color:#f0a04070;background:#f0a0400d;}
+.group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;}
+.group-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);}
+.group-card.superset .group-title{color:var(--amber);}
+.group-sub{font-size:12px;color:var(--text2);margin-top:3px;line-height:1.4;}
+.group-card .ex-block{margin:0 8px 8px;}
+.ex-letter{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:6px;background:var(--border2);color:var(--text);font-size:11px;font-weight:800;margin-right:8px;vertical-align:1px;}
+.group-card.superset .ex-letter{background:var(--amber);color:#0a0a0a;}
 </style>
 </head>
 <body>
@@ -697,6 +713,27 @@ function syncToSheets(data){
     .catch(e=>console.log('Sync error:',e));
 }
 
+// Une série = une seule ligne dans le Sheet, identifiée par un ID unique.
+// Cochée → ligne créée ou mise à jour ; décochée → ligne supprimée.
+const syncTimers={};
+const setId=(cw,ex,sk2)=>`${cw.storageKey}|${ex}|${sk2}`;
+function syncSet(cw,ex,sk2,done){
+  const id=setId(cw,ex,sk2);
+  clearTimeout(syncTimers[id]);delete syncTimers[id];
+  if(!done){syncToSheets({id,action:'delete'});return;}
+  const prog=PROGRAMS[cw.programId];
+  const vb=findBlock(cw.programId,cw.cycle,cw.blockIdx);
+  const sess=prog.blocks[cw.blockIdx].sessions[cw.sessionIdx];
+  let exName='';
+  sess.groups.forEach((g,gi)=>g.exercises.forEach((e,ei)=>{if(`g${gi}_e${ei}`===ex)exName=e.name;}));
+  const raw=S[cw.storageKey]?.[ex]?.[sk2]||'';
+  const w=parseFloat(raw);
+  syncToSheets({id,action:'upsert',date:new Date().toISOString(),programme:prog.name,cycle:cw.cycle,
+    bloc:vb?vb.label:'',semaine:absWeek(cw.programId,cw.cycle,cw.blockIdx,cw.week),
+    seance:`S${sess.num} ${sess.name}`,exercice:exName,serie:parseInt(sk2.slice(1))+1,
+    poids:isNaN(w)?'':w,fait:1});
+}
+
 // ═══════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════
@@ -997,11 +1034,26 @@ function openWorkout(bIdx,sIdx,wk,cycle){
   content.innerHTML='';
   const saved=S[sk]||{};
 
+  // Le repos est toujours affiché DANS la carte à laquelle il s'applique :
+  // exercice seul → bouton dans son en-tête ; groupe → en-tête du cadre qui entoure les exercices.
+  const restBtn=r=>`<div class="rest-col"><button class="rest-btn" onclick="startTimer(${r})">⏱ ${r}s</button><span class="rest-cap">repos</span></div>`;
+  let exCount=0;
   s.groups.forEach((g,gi)=>{
-    const rs=document.createElement('div');
-    rs.className='rest-section';
-    rs.innerHTML=`<span class="rest-label">${g.superset?'<span class="superset-tag">Superset</span>':''}Repos ${g.rest}s${g.superset?' après le duo':' entre les séries'}</span><button class="rest-btn" onclick="startTimer(${g.rest})">⏱ Démarrer</button>`;
-    content.appendChild(rs);
+    const multi=g.exercises.length>1;
+    let parent=content;
+    if(multi){
+      const wrap=document.createElement('div');
+      wrap.className='group-card'+(g.superset?' superset':'');
+      wrap.innerHTML=`<div class="group-head">
+        <div>
+          <div class="group-title">${g.superset?'Superset':'Paire'} · ${g.exercises.map((_,i)=>String.fromCharCode(65+i)).join(' + ')}</div>
+          <div class="group-sub">${g.superset
+            ?`Enchaîne ${g.exercises.map((_,i)=>String.fromCharCode(65+i)).join(' puis ')} sans pause, puis repos ${g.rest}s`
+            :`Même repos pour les ${g.exercises.length} exercices : ${g.rest}s entre les séries`}</div>
+        </div>${restBtn(g.rest)}</div>`;
+      content.appendChild(wrap);
+      parent=wrap;
+    }
 
     g.exercises.forEach((ex,ei)=>{
       const exKey=`g${gi}_e${ei}`;
@@ -1011,15 +1063,19 @@ function openWorkout(bIdx,sIdx,wk,cycle){
 
       const block=document.createElement('div');
       block.className='ex-block';
+      block.dataset.name=ex.name;
+      block.style.animationDelay=`${0.04*exCount++}s`;
       block.innerHTML=`
-        <div class="ex-header">
-          <div class="ex-name">${ex.name}</div>
-          ${ex.note?`<div class="ex-note">${ex.note}</div>`:''}
-          <div class="ex-tags">
-            ${ex.tempo?`<span class="ex-tag tempo">Tempo ${ex.tempo}</span>`:''}
-            ${ex.rpe?`<span class="ex-tag rpe">RPE ${ex.rpe}</span>`:''}
-            <span class="ex-tag rest">Repos ${g.rest}s</span>
+        <div class="ex-header ex-header-row">
+          <div style="min-width:0">
+            <div class="ex-name">${multi?`<span class="ex-letter">${String.fromCharCode(65+ei)}</span>`:''}${ex.name}</div>
+            ${ex.note?`<div class="ex-note">${ex.note}</div>`:''}
+            <div class="ex-tags">
+              ${ex.tempo?`<span class="ex-tag tempo">Tempo ${ex.tempo}</span>`:''}
+              ${ex.rpe?`<span class="ex-tag rpe">RPE ${ex.rpe}</span>`:''}
+            </div>
           </div>
+          ${multi?'':restBtn(g.rest)}
         </div>
       `;
 
@@ -1058,7 +1114,7 @@ function openWorkout(bIdx,sIdx,wk,cycle){
         table.appendChild(row);
       }
       block.appendChild(table);
-      content.appendChild(block);
+      parent.appendChild(block);
     });
   });
 
@@ -1104,6 +1160,12 @@ function onWeightInput(input){
   if(!S[key][ex])S[key][ex]={};
   S[key][ex][sk2]=input.value;
   save();
+  // Série déjà cochée → mise à jour de sa ligne dans le Sheet (1,5 s après la dernière frappe)
+  if(S[key][ex][`done_${sk2}`]){
+    const snap={...cw},id=setId(snap,ex,sk2);
+    clearTimeout(syncTimers[id]);
+    syncTimers[id]=setTimeout(()=>syncSet(snap,ex,sk2,true),1500);
+  }
   // Couleur vs référence précédente
   const pd=cw.prevKey&&S[cw.prevKey]?S[cw.prevKey][ex]:null;
   const pw=pd&&pd[sk2]?parseFloat(pd[sk2]):null;
@@ -1112,7 +1174,7 @@ function onWeightInput(input){
   if(input.value&&pw) input.classList.add(val>pw?'better':val<pw?'worse':'same');
   else if(input.value) input.classList.add('filled');
   // PR
-  const record=getRecord(input.closest('.ex-block')?.querySelector('.ex-name')?.textContent||'');
+  const record=getRecord(input.closest('.ex-block')?.dataset.name||'');
   if(val>0&&val>=record&&record>0){
     const d=input.closest('.series-row')?.querySelector('div:nth-child(2) div:first-child');
     if(d&&!d.querySelector('.pr-badge'))d.innerHTML+=`<span class="pr-badge">🏆 PR</span>`;
@@ -1131,18 +1193,7 @@ function onDoneClick(btn){
   btn.classList.toggle('active',now);
   btn.querySelector('path')?.setAttribute('stroke',now?'#0a0a0a':'currentColor');
   save();
-  if(now){
-    const prog=PROGRAMS[cw.programId];
-    const vb=findBlock(cw.programId,cw.cycle,cw.blockIdx);
-    const sess=prog.blocks[cw.blockIdx].sessions[cw.sessionIdx];
-    const serieIdx=parseInt(sk2.replace('s',''));
-    const weight=S[key][ex][sk2]||'';
-    let exName='';
-    sess.groups.forEach((g,gi)=>g.exercises.forEach((e,ei)=>{if(`g${gi}_e${ei}`===ex)exName=e.name;}));
-    syncToSheets({date:new Date().toISOString(),programme:prog.name,cycle:cw.cycle,bloc:vb?vb.label:'',
-      semaine:absWeek(cw.programId,cw.cycle,cw.blockIdx,cw.week),seance:`S${sess.num} ${sess.name}`,
-      exercice:exName,serie:serieIdx+1,poids:weight,fait:1});
-  }
+  syncSet(cw,ex,sk2,now);
 }
 
 function closeWorkout(){
